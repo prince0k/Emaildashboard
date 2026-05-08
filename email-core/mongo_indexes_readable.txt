@@ -1,0 +1,147 @@
+
+========================
+COLLECTION: deploys
+========================
+_id_ => {"_id":1}
+offer_id_1_cid_1 => {"offer_id":1,"cid":1} [UNIQUE]
+deployedAt_1 => {"deployedAt":1}
+sid_1_status_1 => {"sid":1,"status":1}
+offer_id_1_status_1 => {"offer_id":1,"status":1}
+
+========================
+COLLECTION: users
+========================
+_id_ => {"_id":1}
+email_1 => {"email":1} [UNIQUE]
+role_1 => {"role":1}
+
+========================
+COLLECTION: suppression_complaint
+========================
+_id_ => {"_id":1}
+email_1 => {"email":1} [UNIQUE]
+
+========================
+COLLECTION: suppression_jobs
+========================
+_id_ => {"_id":1}
+job_id_1 => {"job_id":1} [UNIQUE]
+
+========================
+COLLECTION: linktokens
+========================
+_id_ => {"_id":1}
+token_1 => {"token":1} [UNIQUE]
+offer_id_1 => {"offer_id":1}
+email_1 => {"email":1}
+rl_1 => {"rl":1}
+type_1 => {"type":1}
+expiresAt_1 => {"expiresAt":1} [TTL 0s]
+
+========================
+COLLECTION: suppression_bounce
+========================
+_id_ => {"_id":1}
+email_1 => {"email":1} [UNIQUE]
+
+========================
+COLLECTION: unsublogs
+========================
+_id_ => {"_id":1}
+offer_id_1 => {"offer_id":1}
+email_1 => {"email":1}
+cid_1 => {"cid":1}
+ip_1 => {"ip":1}
+day_1 => {"day":1}
+offer_id_1_day_1_email_1 => {"offer_id":1,"day":1,"email":1} [UNIQUE]
+day_1_offer_id_1 => {"day":1,"offer_id":1}
+cid_1_day_1 => {"cid":1,"day":1}
+
+========================
+COLLECTION: suppression_unsub
+========================
+_id_ => {"_id":1}
+email_1_scope_1 => {"email":1,"scope":1} [UNIQUE]
+
+========================
+COLLECTION: openlogs
+========================
+_id_ => {"_id":1}
+offer_id_1_created_at_1 => {"offer_id":1,"created_at":1}
+offer_id_1_day_1_email_1 => {"offer_id":1,"day":1,"email":1} [UNIQUE]
+cid_1_day_1 => {"cid":1,"day":1}
+created_at_1 => {"created_at":1} [TTL 7776000s]
+
+========================
+COLLECTION: suppression_global
+========================
+_id_ => {"_id":1}
+email_1 => {"email":1} [UNIQUE]
+
+========================
+COLLECTION: api_keys
+========================
+_id_ => {"_id":1}
+key_1 => {"key":1} [UNIQUE]
+
+========================
+COLLECTION: clicklogs
+========================
+_id_ => {"_id":1}
+offer_id_1_rl_1_created_at_1 => {"offer_id":1,"rl":1,"created_at":1}
+offer_id_1_rl_1_day_1_email_1 => {"offer_id":1,"rl":1,"day":1,"email":1} [UNIQUE]
+created_at_1 => {"created_at":1} [TTL 7776000s]
+
+========================
+COLLECTION: suppression_optout
+========================
+_id_ => {"_id":1}
+email_md5_1 => {"email_md5":1} [UNIQUE]
+
+========================
+COLLECTION: campaigns
+========================
+_id_ => {"_id":1}
+
+========================
+COLLECTION: optoutlogs
+========================
+_id_ => {"_id":1}
+offer_id_1 => {"offer_id":1}
+email_1 => {"email":1}
+cid_1 => {"cid":1}
+ip_1 => {"ip":1}
+day_1 => {"day":1}
+offer_id_1_day_1_email_1 => {"offer_id":1,"day":1,"email":1} [UNIQUE]
+day_1_offer_id_1 => {"day":1,"offer_id":1}
+cid_1_day_1 => {"cid":1,"day":1}
+country_1 => {"country":1}
+offer_id_1_day_1 => {"offer_id":1,"day":1}
+
+========================
+COLLECTION: globalunsubs
+========================
+_id_ => {"_id":1}
+email_1 => {"email":1} [UNIQUE]
+day_1 => {"day":1}
+
+========================
+COLLECTION: offers
+========================
+_id_ => {"_id":1}
+sponsor_1 => {"sponsor":1}
+cid_1 => {"cid":1}
+offer_1 => {"offer":1}
+sponsor_1_cid_1_offer_1 => {"sponsor":1,"cid":1,"offer":1} [UNIQUE]
+sid_1 => {"sid":1}
+isActive_1 => {"isActive":1}
+md5FileName_1 => {"md5FileName":1}
+isDeleted_1 => {"isDeleted":1}
+isActive_1_isDeleted_1 => {"isActive":1,"isDeleted":1}
+offer_id_1 => {"offer_id":1}
+
+========================
+COLLECTION: contacts
+========================
+_id_ => {"_id":1}
+email_1 => {"email":1} [UNIQUE]

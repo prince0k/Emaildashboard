@@ -1,0 +1,79 @@
+   # =========================
+# SYSTEM
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# NODE
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# BUILD
+# =========================
+.next/
+dist/
+build/
+out/
+
+# =========================
+# ENV
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# LOGS
+# =========================
+logs/
+*.log
+
+# =========================
+# PM2
+# =========================
+pids/
+*.pid
+*.seed
+
+# =========================
+# CACHE
+# =========================
+.cache/
+.tmp/
+temp/
+
+# =========================
+# IDE
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# GIT INSIDE SUBFOLDERS
+# =========================
+**/.git
+
+# =========================
+# GOOGLE SERVICE FILE
+# =========================
+email-core/config/google-service.json
+
+# =========================
+# DATA FILES
+# =========================
+email-core-data/**/*.json
+email-core-data/**/*.db
+email-core-data/**/*.sqlite
+email-core-data/**/*.sqlite3
+email-core-data/**/*.csv
+email-core-data/**/*.txt
+email-core-data/**/*.log
+
+# keep structure
+!email-core-data/**/.gitkeep

@@ -1,0 +1,90 @@
+.
+├── app
+│   ├── campaigns
+│   │   ├── index.jsx
+│   │   └── new
+│   │       ├── step-1
+│   │       │   └── page.jsx
+│   │       ├── step-2
+│   │       │   └── page.jsx
+│   │       └── step-3
+│   │           └── page.jsx
+│   ├── deploy
+│   │   ├── history
+│   │   │   └── page.jsx
+│   │   └── page.jsx
+│   ├── favicon.ico
+│   ├── globals.css
+│   ├── layout.tsx
+│   ├── login
+│   │   ├── LoginClient.tsx
+│   │   └── page.tsx
+│   ├── logs
+│   │   ├── clicks
+│   │   │   └── page.jsx
+│   │   └── opens
+│   │       └── page.jsx
+│   ├── navbar.tsx
+│   ├── offers
+│   │   ├── [offerId]
+│   │   │   ├── creatives
+│   │   │   │   ├── page.jsx
+│   │   │   │   └── preview
+│   │   │   │       └── page.jsx
+│   │   │   ├── from-lines
+│   │   │   │   └── page.jsx
+│   │   │   ├── page.jsx
+│   │   │   └── subject-lines
+│   │   │       └── page.jsx
+│   │   └── page.jsx
+│   ├── page.tsx
+│   ├── reports
+│   │   └── page.jsx
+│   └── suppression
+│       ├── history
+│       │   └── page.jsx
+│       ├── md5
+│       │   └── page.jsx
+│       └── page.jsx
+├── backend.txt
+├── components
+│   ├── CampaignStepper.jsx
+│   ├── ConfirmDeleteModal.jsx
+│   ├── CreativeEditor.jsx
+│   ├── CreativeList.jsx
+│   ├── CreativePreview.jsx
+│   ├── CreativeStatusToggle.jsx
+│   ├── FromLineManager.jsx
+│   ├── OfferBuilder.jsx
+│   ├── OfferTabs.jsx
+│   ├── SendControls.jsx
+│   ├── SenderSelector.jsx
+│   ├── StatsCard.jsx
+│   ├── SubjectLineManager.jsx
+│   └── TemplatePreview.jsx
+├── .env.production
+├── lib
+│   ├── api.ts
+│   ├── creativeApi.ts
+│   ├── fromLineApi.ts
+│   └── subjectLineApi.ts
+├── middleware.ts
+├── next.config.ts
+├── next-env.d.ts
+├── package.json
+├── package-lock.json
+├── postcss.config.mjs
+├── public
+│   ├── file.svg
+│   ├── globe.svg
+│   ├── next.svg
+│   ├── vercel.svg
+│   └── window.svg
+├── tsconfig.json
+├── types
+│   ├── creative.ts
+│   ├── fromLine.ts
+│   └── subjectLine.ts
+└── udo journalctl -u mongod -n 50
+
+26 directories, 61 files

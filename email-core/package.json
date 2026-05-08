@@ -1,0 +1,42 @@
+{
+  "type": "module",
+  "name": "email-core",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "seed:permissions": "node scripts/seedPermissions.js",
+    "seed:roles": "node scripts/seedRoles.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "axios": "^1.13.4",
+    "bcrypt": "^6.0.0",
+    "bloom-filters": "^3.0.4",
+    "bullmq": "^5.71.0",
+    "compression": "^1.8.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "crypto": "^1.0.1",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "googleapis": "^171.4.0",
+    "helmet": "^8.1.0",
+    "imap": "^0.8.19",
+    "imapflow": "^1.2.16",
+    "ioredis": "^5.10.0",
+    "jsonwebtoken": "^9.0.3",
+    "mailparser": "^3.9.4",
+    "mongodb": "^6.21.0",
+    "mongoose": "^8.21.0",
+    "multer": "^2.0.2",
+    "node-ssh": "^13.2.1",
+    "p-limit": "^7.3.0",
+    "socks-proxy-agent": "^9.0.0",
+    "unzipper": "^0.12.3"
+  }
+}

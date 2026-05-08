@@ -1,0 +1,11 @@
+[0;1;32m●[0m mongod.service - MongoDB Database Server
+   Loaded: loaded (/usr/lib/systemd/system/mongod.service; enabled; vendor preset: disabled)
+   Active: [0;1;32mactive (running)[0m since Mon 2026-01-26 13:09:14 UTC; 4s ago
+     Docs: https://docs.mongodb.org/manual
+ Main PID: 2707762 (mongod)
+   Memory: 206.4M
+   CGroup: /system.slice/mongod.service
+           └─2707762 /usr/bin/mongod -f /etc/mongod.conf
+
+Jan 26 13:09:14 2KHa2fG2.srv.binaryracks.net systemd[1]: Started MongoDB Database Server.
+Jan 26 13:09:14 2KHa2fG2.srv.binaryracks.net mongod[2707762]: {"t":{"$date":"2026-01-26T13:09:14.241Z"},"s":"I",  "c":"CONTROL",  "id":7484500, "ctx":"-","msg":"Environment variable MONGODB_CONFIG_OVERRIDE_NOFORK == 1, overriding \"processManagement.fork\" to false"}

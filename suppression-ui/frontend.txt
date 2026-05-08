@@ -1,0 +1,190 @@
+.
+├── app
+│   ├── (dashboard)
+│   │   ├── admin
+│   │   │   ├── layout.tsx
+│   │   │   ├── page.tsx
+│   │   │   ├── permissions
+│   │   │   │   └── page.tsx
+│   │   │   ├── roles
+│   │   │   │   └── page.tsx
+│   │   │   ├── senders
+│   │   │   │   └── page.tsx
+│   │   │   └── users
+│   │   │       └── page.tsx
+│   │   ├── campaigns
+│   │   │   ├── [campaign]
+│   │   │   │   ├── logs
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── page.tsx
+│   │   │   │   ├── review
+│   │   │   │   │   └── page.tsx
+│   │   │   │   └── send
+│   │   │   │       └── page.tsx
+│   │   │   ├── create
+│   │   │   │   └── page.tsx
+│   │   │   ├── createBulk
+│   │   │   ├── live-ready
+│   │   │   │   └── page.tsx
+│   │   │   └── page.tsx
+│   │   ├── deploy
+│   │   │   ├── history
+│   │   │   │   └── page.jsx
+│   │   │   └── page.jsx
+│   │   ├── layout.tsx
+│   │   ├── logs
+│   │   │   ├── clicks
+│   │   │   │   └── page.tsx
+│   │   │   └── opens
+│   │   │       └── page.tsx
+│   │   ├── offers
+│   │   │   ├── [offerId]
+│   │   │   │   ├── creatives
+│   │   │   │   │   ├── page.tsx
+│   │   │   │   │   └── preview
+│   │   │   │   │       └── page.tsx
+│   │   │   │   ├── from-lines
+│   │   │   │   │   └── page.jsx
+│   │   │   │   ├── page.tsx
+│   │   │   │   └── subject-lines
+│   │   │   │       └── page.jsx
+│   │   │   └── page.jsx
+│   │   ├── page.tsx
+│   │   ├── pmta
+│   │   │   ├── domains
+│   │   │   │   └── page.tsx
+│   │   │   ├── page.tsx
+│   │   │   ├── queues
+│   │   │   │   └── page.tsx
+│   │   │   ├── server
+│   │   │   │   └── [id]
+│   │   │   │       └── page.tsx
+│   │   │   ├── servers
+│   │   │   │   └── page.tsx
+│   │   │   └── stats
+│   │   │       └── page.tsx
+│   │   ├── reports
+│   │   │   ├── page.tsx
+│   │   │   ├── sender
+│   │   │   │   ├── page.tsx
+│   │   │   │   ├── SenderStatsChart.tsx
+│   │   │   │   ├── SenderStatsFilters.tsx
+│   │   │   │   ├── SenderStatsTable.tsx
+│   │   │   │   └── useSenderStats.ts
+│   │   │   └── sender-performance
+│   │   │       └── page.tsx
+│   │   ├── segments
+│   │   │   ├── combine
+│   │   │   │   └── page.tsx
+│   │   │   ├── create
+│   │   │   │   └── page.tsx
+│   │   │   ├── page.tsx
+│   │   │   ├── preview
+│   │   │   │   ├── page.tsx
+│   │   │   │   └── SegmentPreviewClient.tsx
+│   │   │   ├── split
+│   │   │   │   └── page.tsx
+│   │   │   └── trim
+│   │   │       └── page.tsx
+│   │   └── suppression
+│   │       ├── history
+│   │       │   └── page.jsx
+│   │       ├── md5
+│   │       │   └── page.jsx
+│   │       └── page.jsx
+│   ├── favicon.ico
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── login
+│       ├── LoginClient.tsx
+│       └── page.tsx
+├── backend.txt
+├── components
+│   ├── admin
+│   │   ├── PermissionModal.tsx
+│   │   ├── PermissionTable.tsx
+│   │   ├── RoleModal.tsx
+│   │   ├── RoleTable.tsx
+│   │   ├── UserModal.tsx
+│   │   └── UserTable.tsx
+│   ├── AnalyticsPanel.tsx
+│   ├── CampaignControls.tsx
+│   ├── CampaignTable.tsx
+│   ├── ConfirmDeleteModal.jsx
+│   ├── CreativeEditor.tsx
+│   ├── CreativeList.tsx
+│   ├── CreativeStatusToggle.jsx
+│   ├── FromLineManager.jsx
+│   ├── MiniAnalytics.tsx
+│   ├── OfferTabs.jsx
+│   ├── pmta
+│   │   ├── DomainTable.tsx
+│   │   ├── MultiServerControlPanel.tsx
+│   │   ├── PmtaControlPanel.tsx
+│   │   ├── QueueTable.tsx
+│   │   ├── ServerCard.tsx
+│   │   ├── ServerHealth.tsx
+│   │   └── StatsGraph.tsx
+│   ├── ProtectedRoute.tsx
+│   ├── segments
+│   │   ├── SegmentBuilder.tsx
+│   │   ├── SegmentCombine.tsx
+│   │   ├── SegmentPreview.tsx
+│   │   ├── SegmentSplit.tsx
+│   │   ├── SegmentTable.tsx
+│   │   └── SegmentTrim.tsx
+│   ├── send
+│   │   ├── AdvancedHeaderSettings.tsx
+│   │   ├── CampaignInfo.tsx
+│   │   ├── ConfirmModal.tsx
+│   │   ├── CreativeEditor.tsx
+│   │   ├── ExecutionSettings.tsx
+│   │   ├── FormatSettings.tsx
+│   │   └── RunButton.tsx
+│   ├── senders
+│   │   ├── SenderModal.tsx
+│   │   └── SenderTable.tsx
+│   ├── Sidebar.tsx
+│   ├── StatsCard.tsx
+│   ├── StatusBadge.tsx
+│   ├── SubjectLineManager.jsx
+│   └── ThemeInitializer.tsx
+├── .env
+├── .env.production
+├── frontend.txt
+├── .gitignore
+├── index_report.txt
+├── lib
+│   ├── api.ts
+│   ├── authContext.tsx
+│   ├── campaignApi.ts
+│   ├── creativeApi.ts
+│   ├── fromLineApi.ts
+│   ├── pmtaApi.ts
+│   ├── senderApi.ts
+│   ├── subjectLineApi.ts
+│   ├── theme.ts
+│   └── usePermission.ts
+├── middleware.ts
+├── next.config.ts
+├── next-env.d.ts
+├── package.json
+├── package-lock.json
+├── postcss.config.mjs
+├── public
+│   ├── file.svg
+│   ├── globe.svg
+│   ├── next.svg
+│   ├── vercel.svg
+│   └── window.svg
+├── tailwind.config.js
+├── tsconfig.json
+├── tsconfig.tsbuildinfo
+├── types
+│   ├── creative.ts
+│   ├── fromLine.ts
+│   ├── sender.ts
+│   └── subjectLine.ts
+└── udo journalctl -u mongod -n 50
+
+55 directories, 132 files
