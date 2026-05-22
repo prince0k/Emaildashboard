@@ -10,8 +10,10 @@ import {
     simpleParser
 } from "mailparser";
 import fs from "fs";
+import path from "path";
 import "../config/mongo.js";
 import LinkToken from "../models/LinkToken.js";
+import Campaign from "../models/Campaign.js";
 import {
     decryptToken,
     isOldToken
@@ -40,9 +42,15 @@ const baseConfig = {
 };
 
 /* ======================
-   FILE PATH
+   FILE PATHS
 ====================== */
-const FILE_PATH = "/var/www/email-core-data/complaint/complaint.txt";
+const DATA_ROOT = process.env.DATA_ROOT || "/var/www/email-core-data";
+const FILE_PATH = path.join(DATA_ROOT, "complaint", "complaint.txt");
+const DOMAIN_DIR = path.join(DATA_ROOT, "complaint", "domain");
+const GLOBAL_PATH = path.join(DATA_ROOT, "global", "normalized.txt");
+
+// Escalation threshold: complaint on N+ domains = global
+const DOMAIN_ESCALATION_THRESHOLD = 2;
 
 /* ======================
    LOAD EXISTING (FAST)
@@ -66,14 +74,75 @@ const extractTokenFromUrl = (text) => {
 };
 
 /* ======================
-   SAVE EMAIL (NO DUPES)
+   SAVE EMAIL (GLOBAL — NO DUPES)
 ====================== */
 const appendUniqueEmail = async (email) => {
 
     if (!existingEmails.has(email)) {
         fs.appendFileSync(FILE_PATH, email + "\n");
         existingEmails.add(email);
-        console.log("✅ Saved:", email);
+        console.log("✅ Saved (global):", email);
+    }
+};
+
+/* ======================
+   SAVE EMAIL (DOMAIN-LEVEL)
+====================== */
+const appendDomainComplaint = (email, domain) => {
+    if (!domain) return;
+
+    try {
+        if (!fs.existsSync(DOMAIN_DIR)) {
+            fs.mkdirSync(DOMAIN_DIR, { recursive: true });
+        }
+
+        const domainFile = path.join(DOMAIN_DIR, `${domain.toLowerCase()}.txt`);
+
+        // Load existing for this domain
+        let domainSet = new Set();
+        if (fs.existsSync(domainFile)) {
+            domainSet = new Set(
+                fs.readFileSync(domainFile, "utf-8").split("\n").filter(Boolean)
+            );
+        }
+
+        if (!domainSet.has(email)) {
+            fs.appendFileSync(domainFile, email + "\n");
+            console.log(`✅ Saved (domain ${domain}):`, email);
+        }
+    } catch (e) {
+        console.error("Domain complaint write error:", e);
+    }
+};
+
+/* ======================
+   ESCALATE TO GLOBAL
+====================== */
+const checkAndEscalate = async (email) => {
+    try {
+        // Count distinct domains this email has complained on
+        const distinctDomains = await ComplaintLog.distinct("domain", {
+            email,
+            domain: { $ne: null },
+        });
+
+        if (distinctDomains.length >= DOMAIN_ESCALATION_THRESHOLD) {
+            // Escalate to global complaint
+            await appendUniqueEmail(email);
+
+            // Also add to global/normalized.txt
+            if (fs.existsSync(GLOBAL_PATH)) {
+                const globalSet = new Set(
+                    fs.readFileSync(GLOBAL_PATH, "utf-8").split("\n").filter(Boolean)
+                );
+                if (!globalSet.has(email)) {
+                    fs.appendFileSync(GLOBAL_PATH, email + "\n");
+                    console.log("🔥 ESCALATED to global:", email, `(${distinctDomains.length} domains)`);
+                }
+            }
+        }
+    } catch (e) {
+        console.error("Escalation check error:", e);
     }
 };
 
@@ -262,6 +331,7 @@ async function handleHardBounce(email) {
 async function handleToken(token) {
   let email = null;
   let offer_id = null;
+  let sendDomain = null;
 
   if (isOldToken(token)) {
     const doc = await LinkToken.findOne({ token }).lean();
@@ -315,6 +385,24 @@ async function handleToken(token) {
   }
 
   /* =========================
+     🔥 RESOLVE SENDING DOMAIN
+  ========================= */
+  if (offer_id) {
+    try {
+      // Find campaign that used this offer_id to get the sending domain
+      const campaignDoc = await Campaign.findOne({
+        runtimeOfferId: offer_id,
+      }).lean();
+
+      if (campaignDoc?.routes?.length > 0) {
+        sendDomain = campaignDoc.routes[0].domain?.toLowerCase() || null;
+      }
+    } catch (e) {
+      console.error("Domain resolve error:", e);
+    }
+  }
+
+  /* =========================
      🔥 MAIN FIX (ComplaintLog)
   ========================= */
 
@@ -323,11 +411,13 @@ async function handleToken(token) {
       {
         offer_id,
         email,
+        domain: sendDomain || null,
       },
       {
         $setOnInsert: {
           offer_id,
           email,
+          domain: sendDomain || null,
           day: new Date().toISOString().slice(0, 10),
           createdAt: new Date(),
         },
@@ -335,9 +425,21 @@ async function handleToken(token) {
       { upsert: true }
     );
 
-    console.log("📊 ComplaintLog updated:", email);
+    console.log("📊 ComplaintLog updated:", email, "domain:", sendDomain);
   }
 
-  await appendUniqueEmail(email);
+  /* =========================
+     🔥 DOMAIN-LEVEL + ESCALATION
+  ========================= */
+  if (sendDomain) {
+    // Write to domain-level file
+    appendDomainComplaint(email, sendDomain);
+
+    // Check multi-domain threshold → escalate if needed
+    await checkAndEscalate(email);
+  } else {
+    // No domain info — write to global complaint directly (legacy behavior)
+    await appendUniqueEmail(email);
+  }
 }
 

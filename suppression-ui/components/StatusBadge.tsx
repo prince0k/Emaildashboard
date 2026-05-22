@@ -10,49 +10,49 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
     { bg: string; text: string; border: string; dot: string }
   > = {
     RUNNING: {
-      bg: "bg-emerald-500/10",
-      text: "text-emerald-600 dark:text-emerald-400",
-      border: "border-emerald-500/20",
-      dot: "bg-emerald-500",
+      bg: "bg-emerald/10",
+      text: "text-emerald",
+      border: "border-emerald/20",
+      dot: "bg-emerald",
     },
     PAUSED: {
-      bg: "bg-amber-500/10",
-      text: "text-amber-600 dark:text-amber-400",
-      border: "border-amber-500/20",
-      dot: "bg-amber-500",
+      bg: "bg-amber/10",
+      text: "text-amber",
+      border: "border-amber/20",
+      dot: "bg-amber",
     },
     STOPPED: {
-      bg: "bg-red-500/10",
-      text: "text-red-600 dark:text-red-400",
-      border: "border-red-500/20",
-      dot: "bg-red-500",
+      bg: "bg-rose/10",
+      text: "text-rose",
+      border: "border-rose/20",
+      dot: "bg-rose",
     },
     FAILED: {
-      bg: "bg-red-600/15",
-      text: "text-red-700 dark:text-red-400",
-      border: "border-red-600/30",
-      dot: "bg-red-600",
+      bg: "bg-rose/15",
+      text: "text-rose",
+      border: "border-rose/30",
+      dot: "bg-rose",
     },
     SCHEDULED: {
-      bg: "bg-blue-500/10",
-      text: "text-blue-600 dark:text-blue-400",
-      border: "border-blue-500/20",
-      dot: "bg-blue-500",
+      bg: "bg-primary/10",
+      text: "text-primary",
+      border: "border-primary/20",
+      dot: "bg-primary",
     },
     COMPLETED: {
-      bg: "bg-muted",
-      text: "text-muted-foreground",
+      bg: "bg-panel",
+      text: "text-text-secondary",
       border: "border-border/60",
-      dot: "bg-muted-foreground",
+      dot: "bg-text-muted",
     },
   };
 
   const variant =
     styles[status] || {
-      bg: "bg-muted",
-      text: "text-muted-foreground",
+      bg: "bg-panel",
+      text: "text-text-secondary",
       border: "border-border/60",
-      dot: "bg-muted-foreground",
+      dot: "bg-text-muted",
     };
 
   return (

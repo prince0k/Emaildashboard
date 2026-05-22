@@ -1,10 +1,14 @@
 import Campaign from "../../models/Campaign.js";
 import Deploy from "../../models/Deploy.js";
-import { callSender } from "./helpers/senderBridge.js";
+import Creative from "../../models/Creative.js";
 import SubjectLine from "../../models/SubjectLine.js";
 import FromLine from "../../models/FromLine.js";
 import SenderServer from "../../models/SenderServer.js";
 
+/**
+ * reviewCampaign.js
+ * FULLY TRANSACTIONAL — reads all data from MongoDB, no sender calls.
+ */
 export default async function reviewCampaign(req, res) {
   try {
     let { campaign } = req.params;
@@ -66,26 +70,25 @@ if (campaignDoc.offerId) {
   fromLines = fromDocs.map((f) => f.text);
 }
 
-
     /* ===============================
-       FETCH CREATIVE FROM SENDER
+       FETCH CREATIVE FROM MONGODB
+       (No sender call — read from DB)
     =============================== */
 
     let creativeHtml = "";
 
-    try {
-      const creativeRes = await callSender(
-        campaignDoc.sender?._id,
-        "getCreative.php",
-        { campaignName: campaignDoc.campaignName },
-        "GET"
-      );
-
-      if (creativeRes?.activeHtml) {
-        creativeHtml = creativeRes.activeHtml;
+    // Priority: 1) htmlOverride on campaign, 2) Creative document
+    if (campaignDoc.htmlOverride) {
+      creativeHtml = campaignDoc.htmlOverride;
+    } else if (campaignDoc.creativeId) {
+      try {
+        const creativeDoc = await Creative.findById(campaignDoc.creativeId).lean();
+        if (creativeDoc?.html) {
+          creativeHtml = creativeDoc.html;
+        }
+      } catch (err) {
+        console.error("CREATIVE LOAD FAILED:", err.message);
       }
-    } catch (err) {
-      console.error("CREATIVE LOAD FAILED:", err.message);
     }
 
     const senderWithRoutes = campaignDoc.sender?._id
@@ -97,6 +100,16 @@ if (campaignDoc.offerId) {
     const availableRoutes = Array.isArray(senderWithRoutes?.routes)
       ? senderWithRoutes.routes.filter((r) => r?.active !== false)
       : [];
+
+    let triggerCampaignName = null;
+    if (campaignDoc.openTriggerCampaignId) {
+      try {
+        const trigger = await Campaign.findById(campaignDoc.openTriggerCampaignId).select("campaignName").lean();
+        triggerCampaignName = trigger?.campaignName || null;
+      } catch (err) {
+        console.error("TRIGGER LOOKUP FAILED:", err.message);
+      }
+    }
 
     return res.json({
   campaignName: campaignDoc.campaignName,
@@ -128,8 +141,8 @@ if (campaignDoc.offerId) {
   subjectLines,
   fromLines,
 
-  // 🔥 ADD THIS
   sendConfig: campaignDoc.sendConfig || null,
+  openTriggerCampaignName: triggerCampaignName,
 });
 
   } catch (err) {

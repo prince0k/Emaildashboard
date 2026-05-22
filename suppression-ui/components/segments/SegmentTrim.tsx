@@ -92,14 +92,14 @@ export default function SegmentTrim(){
       <select
         value={sourceSegment}
         onChange={(e)=>setSourceSegment(e.target.value)}
-        className="border p-2 w-full"
+        className="border border-border bg-card text-foreground px-3 py-2 rounded-lg outline-none focus:border-primary transition-colors cursor-pointer w-full"
       >
-        <option value="">
+        <option value="" className="bg-card text-foreground">
           Select Source Segment
         </option>
 
         {segments.map(seg=>(
-          <option key={seg.file} value={seg.file}>
+          <option key={seg.file} value={seg.file} className="bg-card text-foreground">
             {seg.name} ({seg.count})
           </option>
         ))}
@@ -111,7 +111,7 @@ export default function SegmentTrim(){
         placeholder="New Segment Name"
         value={name}
         onChange={(e)=>setName(e.target.value)}
-        className="border p-2 w-full"
+        className="border border-border bg-card text-foreground px-3 py-2 rounded-lg outline-none focus:border-primary transition-colors w-full"
       />
 
       {/* Remove head */}
@@ -120,7 +120,7 @@ export default function SegmentTrim(){
         placeholder="Remove from Head (top)"
         value={removeHead}
         onChange={(e)=>setRemoveHead(Number(e.target.value))}
-        className="border p-2 w-full"
+        className="border border-border bg-card text-foreground px-3 py-2 rounded-lg outline-none focus:border-primary transition-colors w-full"
       />
 
       {/* Remove tail */}
@@ -129,14 +129,14 @@ export default function SegmentTrim(){
         placeholder="Remove from Tail (bottom)"
         value={removeTail}
         onChange={(e)=>setRemoveTail(Number(e.target.value))}
-        className="border p-2 w-full"
+        className="border border-border bg-card text-foreground px-3 py-2 rounded-lg outline-none focus:border-primary transition-colors w-full"
       />
 
       {/* Button */}
       <button
         onClick={submit}
         disabled={loading}
-        className="px-4 py-2 bg-black text-white rounded"
+        className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg disabled:bg-muted disabled:text-text-muted disabled:cursor-not-allowed transition-colors cursor-pointer"
       >
         {loading ? "Processing..." : "Create Trimmed Segment"}
       </button>

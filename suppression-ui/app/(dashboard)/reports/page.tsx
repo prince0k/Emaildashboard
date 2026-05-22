@@ -66,13 +66,13 @@ export default function ReportsDashboard() {
       <div className="flex gap-3 items-center">
         <input
           type="date"
-          className="border p-2"
+          className="border border-border bg-card text-foreground rounded-lg px-3 py-2 outline-none focus:border-primary transition-colors"
           value={date}
           onChange={(e) => setDate(e.target.value)}
         />
         <button
           onClick={loadReports}
-          className="bg-black text-white px-4 py-2"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg px-4 py-2 transition-colors cursor-pointer disabled:opacity-50"
           disabled={loading}
         >
           {loading ? "Loading…" : "Load"}
@@ -80,13 +80,13 @@ export default function ReportsDashboard() {
       </div>
 
       {error && (
-        <div className="text-red-600 text-sm">
+        <div className="text-rose text-sm">
           {error}
         </div>
       )}
 
       {loading && (
-        <div className="text-gray-500">
+        <div className="text-text-muted">
           Loading reports…
         </div>
       )}
@@ -154,20 +154,20 @@ function ReportTable({
 }) {
   if (!rows.length) {
     return (
-      <div className="text-gray-500 text-sm">
+      <div className="text-text-muted text-sm">
         No data
       </div>
     );
   }
 
   return (
-    <table className="w-full border text-sm">
-      <thead className="bg-gray-100">
+    <table className="w-full border border-border text-sm">
+      <thead className="bg-panel text-text-secondary">
         <tr>
-          <th className="border p-2 text-left">
+          <th className="border-b border-border p-3 text-left font-medium">
             Offer ID
           </th>
-          <th className="border p-2 text-left">
+          <th className="border-b border-border p-3 text-left font-medium">
             Value
           </th>
         </tr>
@@ -176,12 +176,12 @@ function ReportTable({
         {rows.map((r) => (
           <tr
             key={r.offer_id}
-            className="border-t"
+            className="border-t border-border hover:bg-hover/30 transition-colors"
           >
-            <td className="border p-2 font-mono">
+            <td className="border-b border-border p-3 font-mono text-text-secondary">
               {r.offer_id}
             </td>
-            <td className="border p-2 font-semibold">
+            <td className="border-b border-border p-3 font-semibold text-foreground">
               {r[metric]}
             </td>
           </tr>

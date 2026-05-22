@@ -8,7 +8,14 @@ import api from "@/lib/api";
 export default function CampaignManagerPage() {
 
   const [campaigns, setCampaigns] = useState<any[]>([]);
-const campaignsRef = useRef<any[]>([]);
+  const campaignsRef = useRef<any[]>([]);
+
+  // Keep campaignsRef in sync with latest state to avoid stale closure
+  // during background polling (Pause, Resume, Stop, Delete actions).
+  useEffect(() => {
+    campaignsRef.current = campaigns;
+  }, [campaigns]);
+
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [sort, setSort] = useState<{
@@ -41,9 +48,12 @@ const campaignsRef = useRef<any[]>([]);
 
   const fetchCampaigns = useCallback(async () => {
     try {
-      if (!campaigns.length) {
-  setLoading(true);
-}
+      // Use campaignsRef.current.length instead of campaigns.length so that
+      // the "Loading campaigns..." skeleton only shows on the very first load,
+      // not during background polls or status-update actions.
+      if (campaignsRef.current.length === 0) {
+        setLoading(true);
+      }
 
       if (abortRef.current) {
         abortRef.current.abort();
@@ -79,7 +89,7 @@ const campaignsRef = useRef<any[]>([]);
         ...json.pagination,
       }));
     } catch (err: any) {
-      if (err.name !== "AbortError") {
+      if (err.name !== "AbortError" && err.name !== "CanceledError") {
         console.error("Fetch error", err);
       }
     } finally {
@@ -144,7 +154,7 @@ const campaignsRef = useRef<any[]>([]);
           <h1 className="text-3xl font-semibold tracking-tight">
             Campaign Manager
           </h1>
-          <p className="text-muted-foreground text-sm mt-2">
+          <p className="text-text-secondary text-sm mt-2">
             Monitor, control and analyze live & scheduled campaigns
           </p>
         </div>
@@ -157,8 +167,9 @@ const campaignsRef = useRef<any[]>([]);
               rounded-xl
               border border-border/60
               bg-card/80 backdrop-blur-sm
-              hover:bg-muted/40
+              hover:bg-hover
               transition
+              cursor-pointer
             "
           >
             Refresh
@@ -168,11 +179,11 @@ const campaignsRef = useRef<any[]>([]);
             onClick={() => setAutoRefresh((prev) => !prev)}
             className={`
               px-4 py-2 text-xs font-semibold
-              rounded-xl border transition
+              rounded-xl border transition cursor-pointer
               ${
                 autoRefresh
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                  : "bg-muted text-muted-foreground border-border/60"
+                  ? "bg-emerald/10 text-emerald border-emerald/20"
+                  : "bg-panel text-text-muted border-border"
               }
             `}
           >
@@ -191,7 +202,7 @@ const campaignsRef = useRef<any[]>([]);
       {/* TABLE */}
 <div className="w-full">
   {loading ? (
-    <div className="bg-card/80 backdrop-blur-sm border border-border/60 rounded-2xl shadow-soft p-6 text-sm text-muted-foreground">
+    <div className="bg-card/80 backdrop-blur-sm border border-border/60 rounded-2xl shadow-soft p-6 text-sm text-text-muted">
       Loading campaigns...
     </div>
   ) : (

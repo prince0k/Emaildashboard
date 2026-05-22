@@ -1,7 +1,12 @@
 import Campaign from "../../models/Campaign.js";
-import { callSender } from "./helpers/senderBridge.js";
 import { validateTransition } from "./helpers/validateTransition.js";
 
+/**
+ * controlCampaign.js
+ * FULLY TRANSACTIONAL — DB-ONLY STATUS CONTROL
+ * The Node.js worker polls campaign.status from MongoDB.
+ * No sender filesystem calls needed.
+ */
 export default async function controlCampaign(req, res) {
   try {
     const rawCampaign = req.params.campaign;
@@ -78,10 +83,10 @@ export default async function controlCampaign(req, res) {
     }
 
     /* =====================
-       CALL SENDER
+       RESUME CONFIG
     ===================== */
 
-     const runtimeConfig = {};
+    const runtimeConfig = {};
     if (action === "RESUME") {
       const effectiveTotalSend =
         parsedTotalSend ?? campaign.sendConfig?.totalSend ?? null;
@@ -107,30 +112,9 @@ export default async function controlCampaign(req, res) {
       }
     }
 
-    const senderResponse = await callSender(
-      campaign.sender,
-      "updateControl.php",
-      {
-        campaignName: campaign.campaignName,
-        action,
-        status: targetStatus,
-        ...runtimeConfig,
-      }
-    );
-
-    if (
-      !senderResponse ||
-      senderResponse.error ||
-      senderResponse.status !== "updated"
-    ) {
-      return res.status(502).json({
-        error: "sender_control_failed",
-        details: senderResponse,
-      });
-    }
-
     /* =====================
        UPDATE DB STATUS
+       Worker polls this field to detect PAUSE/STOP
     ===================== */
 
     campaign.execution = campaign.execution || {};

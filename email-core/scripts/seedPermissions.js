@@ -50,6 +50,7 @@ const permissions = [
   { name: "role.update", module: "role" },
   { name: "role.delete", module: "role" },
   { name: "role.view", module: "role" },
+  { name: "admin.roles", module: "admin" },
 ];
 
 async function seed() {

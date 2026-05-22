@@ -245,7 +245,7 @@ export default function ServerDetail() {
                   id="runAll"
                   checked={runAll}
                   onChange={(e) => setRunAll(e.target.checked)}
-                  className="rounded border-gray-300"
+                  className="rounded border-border"
                 />
                 <label htmlFor="runAll" className="text-sm">
                   Run on all servers
@@ -257,7 +257,7 @@ export default function ServerDetail() {
                   <button
                     onClick={() => runCommand("reload")}
                     disabled={!!pendingAction}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
                   >
                     <RotateCw className="h-3.5 w-3.5" />
                     Reload
@@ -277,7 +277,7 @@ export default function ServerDetail() {
                       )
                     }
                     disabled={!!pendingAction}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-rose text-primary-foreground hover:opacity-90 disabled:opacity-50"
                   >
                     <Power className="h-3.5 w-3.5" />
                     Restart
@@ -291,7 +291,7 @@ export default function ServerDetail() {
                   <button
                     onClick={() => runCommand("reset_counters")}
                     disabled={!!pendingAction}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-yellow-600 text-white hover:bg-yellow-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-amber text-primary-foreground hover:opacity-90 disabled:opacity-50"
                   >
                     Reset Counters
                   </button>
@@ -304,7 +304,7 @@ export default function ServerDetail() {
                   <button
                     onClick={() => runCommand("status")}
                     disabled={!!pendingAction}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-gray-600 text-white hover:bg-gray-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-panel border border-border text-text-secondary hover:bg-hover disabled:opacity-50"
                   >
                     <Eye className="h-3.5 w-3.5" />
                     Status
@@ -318,7 +318,7 @@ export default function ServerDetail() {
                   <button
                     onClick={() => runCommand("pause_queue", "*/*")}
                     disabled={!!pendingAction}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-amber/80 text-primary-foreground hover:opacity-90 disabled:opacity-50"
                   >
                     <Pause className="h-3.5 w-3.5" />
                     Pause All
@@ -332,7 +332,7 @@ export default function ServerDetail() {
                   <button
                     onClick={() => runCommand("resume_queue", "*/*")}
                     disabled={!!pendingAction}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-emerald text-primary-foreground hover:opacity-90 disabled:opacity-50"
                   >
                     <Play className="h-3.5 w-3.5" />
                     Resume All
@@ -352,7 +352,7 @@ export default function ServerDetail() {
                       )
                     }
                     disabled={!!pendingAction}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-red-700 text-white hover:bg-red-800 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-rose/90 text-primary-foreground hover:opacity-90 disabled:opacity-50"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     Delete All
@@ -423,7 +423,7 @@ export default function ServerDetail() {
                             <TooltipTrigger asChild>
                               <button
                                 onClick={() => runCommand("pause_queue", `${d.domain}/*`)}
-                                className="text-xs px-2 py-1 rounded bg-yellow-600 text-white hover:bg-yellow-700"
+                                className="text-xs px-2 py-1 rounded bg-amber text-primary-foreground hover:opacity-90"
                               >
                                 Pause Domain
                               </button>
@@ -434,7 +434,7 @@ export default function ServerDetail() {
                             <TooltipTrigger asChild>
                               <button
                                 onClick={() => runCommand("resume_queue", `${d.domain}/*`)}
-                                className="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+                                className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground hover:opacity-90"
                               >
                                 Resume Domain
                               </button>
@@ -451,7 +451,7 @@ export default function ServerDetail() {
                                     () => runCommand("delete_queue", `${d.domain}/*`)
                                   )
                                 }
-                                className="text-xs px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700"
+                                className="text-xs px-2 py-1 rounded bg-rose text-primary-foreground hover:opacity-90"
                               >
                                 Delete Domain
                               </button>
@@ -468,7 +468,7 @@ export default function ServerDetail() {
                       <div className="flex items-center justify-between mb-3">
                         <button
                           onClick={() => setSelectedDomain(null)}
-                          className="text-sm text-blue-500 hover:underline flex items-center gap-1"
+                          className="text-sm text-primary hover:underline flex items-center gap-1"
                         >
                           ← Back to domains
                         </button>
@@ -507,7 +507,7 @@ export default function ServerDetail() {
                                         () => runCommand("delete_queue", q.queue)
                                       )
                                     }
-                                    className="text-red-600"
+                                    className="text-rose"
                                   >
                                     <Trash2 className="mr-2 h-4 w-4" /> Delete Queue
                                   </DropdownMenuItem>
@@ -518,7 +518,7 @@ export default function ServerDetail() {
                               </DropdownMenu>
                             </div>
                             {q.error?.message && (
-                              <div className="text-xs text-red-400 bg-red-950/30 p-2 rounded">
+                              <div className="text-xs text-rose bg-rose/10 p-2 rounded">
                                 {q.error.message.slice(0, 120)}
                                 {q.error.message.length > 120 && "…"}
                               </div>
@@ -552,8 +552,8 @@ export default function ServerDetail() {
               <CardContent>
                 <pre className={`text-xs p-3 rounded overflow-auto ${
                   cmdResult?.status === "success"
-                    ? "bg-green-900 text-green-300"
-                    : "bg-red-900 text-red-300"
+                    ? "bg-emerald/10 text-emerald"
+                    : "bg-rose/10 text-rose"
                 }`}>
                   {JSON.stringify(cmdResult, null, 2)}
                 </pre>
@@ -579,7 +579,7 @@ export default function ServerDetail() {
                   confirmDialog.onConfirm();
                   setConfirmDialog((prev) => ({ ...prev, open: false }));
                 }}
-                className="bg-red-600 hover:bg-red-700"
+                className="bg-rose hover:bg-rose/90 text-primary-foreground"
               >
                 Confirm
               </AlertDialogAction>
@@ -605,8 +605,8 @@ function StatCard({
 }) {
   const variantClasses = {
     default: "text-foreground",
-    success: "text-green-600",
-    destructive: "text-red-600",
+    success: "text-emerald",
+    destructive: "text-rose",
   };
   return (
     <Card>

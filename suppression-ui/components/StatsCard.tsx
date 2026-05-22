@@ -15,16 +15,16 @@ export default function StatsCard({
 }: StatsCardProps) {
   const highlightStyles = {
     default: "text-foreground",
-    success: "text-emerald-500",
-    danger: "text-red-500",
-    warning: "text-amber-500",
+    success: "text-emerald",
+    danger: "text-rose",
+    warning: "text-amber",
   };
 
   const iconBgStyles = {
-    default: "bg-muted",
-    success: "bg-emerald-500/10",
-    danger: "bg-red-500/10",
-    warning: "bg-amber-500/10",
+    default: "bg-panel",
+    success: "bg-emerald/10",
+    danger: "bg-rose/10",
+    warning: "bg-amber/10",
   };
 
   return (

@@ -13,8 +13,9 @@ type SuppressionData = {
 };
 
 type CampaignReview = {
+  _id?: string;
   runtimeOfferId: string;
-  senderId: string;
+  senderServerId: string;
   dba?: string;
   isp: string;
   segmentName: string;
@@ -23,6 +24,7 @@ type CampaignReview = {
   suppression?: SuppressionData;
   redirectLinks?: any;
   optoutLink?: string;
+  openTriggerCampaignName?: string;
 };
 
 export default function ReviewCampaignPage() {
@@ -105,7 +107,7 @@ export default function ReviewCampaignPage() {
           <h3 style={sectionTitleStyle}>📋 Campaign Details</h3>
           <div style={grid2Style}>
             <InfoItem label="Runtime Offer ID" value={data.runtimeOfferId} />
-            <InfoItem label="Sender" value={data.senderId} />
+            <InfoItem label="Sender" value={data.senderServerId} />
             <InfoItem label="DBA" value={data.dba} />
             <InfoItem label="ISP" value={data.isp} />
             <InfoItem label="Segment" value={data.segmentName} />
@@ -144,6 +146,7 @@ export default function ReviewCampaignPage() {
                   : "Not deployed"
               }
             />
+            <InfoItem label="Open Trigger" value={data.openTriggerCampaignName} />
           </div>
         </section>
 
@@ -230,9 +233,14 @@ export default function ReviewCampaignPage() {
           </div>
         </section>
 
-        <Link href={`/campaigns/${campaign}/send`} style={{ textDecoration: "none" }}>
-          <button className="w-full py-4 rounded-xl bg-green-600 hover:bg-green-500 text-white font-semibold transition">Proceed to Send →</button>
-        </Link>
+        <div className="flex gap-4">
+          <Link href={`/campaigns/triggers/create?parentId=${campaign}`} className="flex-1">
+            <button className="w-full py-4 rounded-xl bg-primary/10 border border-primary/20 text-primary font-semibold hover:bg-primary/20 transition">Set Trigger ⚡</button>
+          </Link>
+          <Link href={`/campaigns/create?id=${data?._id}`} className="flex-[2]">
+            <button className="w-full py-4 rounded-xl bg-green-600 hover:bg-green-500 text-white font-semibold transition">Proceed to Send →</button>
+          </Link>
+        </div>
       </div>
     </div>
   );
@@ -241,9 +249,9 @@ export default function ReviewCampaignPage() {
 /* ================= SMALL COMPONENT ================= */
 
 const InfoItem = ({ label, value }: { label: string; value: any }) => (
-  <div className="bg-background border border-border rounded-lg p-4">
+  <div className="bg-background border border-border rounded-lg p-4 min-w-0">
     <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{label}</div>
-    <div className="text-lg font-semibold text-foreground">
+    <div className="text-lg font-semibold text-foreground break-all">
       {value !== undefined && value !== null && value !== "" ? value : "—"}
     </div>
   </div>

@@ -1,6 +1,23 @@
 import jwt from "jsonwebtoken";
 import { jwtConfig } from "../config/jwt.js";
 import User from "../models/User.js";
+import Permission from "../models/Permission.js";
+
+// Simple TTL cache for admin permissions (avoids querying all permissions on every request)
+let _adminPermsCache = { data: null, expires: 0 };
+const ADMIN_PERMS_TTL = 60 * 1000; // 1 minute
+
+async function getAdminPermissions() {
+  if (_adminPermsCache.data && Date.now() < _adminPermsCache.expires) {
+    return _adminPermsCache.data;
+  }
+  const allPerms = await Permission.find({}).lean();
+  _adminPermsCache = {
+    data: allPerms.map(p => p.name),
+    expires: Date.now() + ADMIN_PERMS_TTL,
+  };
+  return _adminPermsCache.data;
+}
 
 export default async function auth(req, res, next) {
   try {
@@ -12,8 +29,10 @@ export default async function auth(req, res, next) {
       token = authHeader.split(" ")[1];
     }
 
-    if (!token && req.cookies?.token) {
-      token = req.cookies.token;
+    const cookieName = process.env.COOKIE_NAME || "token";
+
+    if (!token && req.cookies?.[cookieName]) {
+      token = req.cookies[cookieName];
     }
 
     if (!token) {
@@ -29,7 +48,8 @@ export default async function auth(req, res, next) {
         path: "role",
         populate: { path: "permissions" },
       })
-      .populate("extraPermissions");
+      .populate("extraPermissions")
+      .lean();
 
     if (!user || !user.active) {
       return res.status(401).json({ error: "user_not_authorized" });
@@ -39,17 +59,22 @@ export default async function auth(req, res, next) {
       return res.status(403).json({ error: "role_not_assigned" });
     }
 
-    const rolePermissions =
-      user.role?.permissions?.map(p => p.name) || [];
+    let finalPermissions = [];
 
-    const extraPermissions =
-      user.extraPermissions?.map(p => p.name) || [];
+    if (user.role.name === "admin") {
+      // ⚡ God Mode: Admin always gets ALL permissions (cached for 1 min)
+      finalPermissions = await getAdminPermissions();
+    } else {
+      const rolePermissions = user.role?.permissions?.map(p => p.name) || [];
+      const extraPermissions = user.extraPermissions?.map(p => p.name) || [];
+      finalPermissions = [...new Set([...rolePermissions, ...extraPermissions])];
+    }
 
     req.user = {
       mongoId: user._id.toString(),
       userId: user.userId,
       email: user.email,
-      permissions: [...new Set([...rolePermissions, ...extraPermissions])],
+      permissions: finalPermissions,
     };
 
     next();

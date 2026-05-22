@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Pause, Play, Square, Info, Loader2 } from "lucide-react";
+import api from "@/lib/api";
 
 export default function CampaignControls({
   campaign,
@@ -16,29 +17,21 @@ export default function CampaignControls({
     try {
       setLoading(action);
 
-      const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/campaigns/${encodeURIComponent(
-        campaign.campaignName
-      )}/control`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ action }),
-      }
-    );
+      const actionPathMap: Record<string, string> = {
+        PAUSE: "pause",
+        RESUME: "resume",
+        STOP: "stop",
+      };
 
-    const data = await res.json();
+      const path = actionPathMap[action];
+      if (!path) return;
 
-    if (!res.ok) {
-      console.error("Control API failed:", data);
-      alert(data.error || "Control failed");
-      return;
-    }
+      const res = await api.post(`/campaigns/${encodeURIComponent(campaign.campaignName)}/${path}`, {});
 
       refresh();
-    } catch (err) {
-      console.error("Status update failed", err);
+    } catch (err: any) {
+      console.error("Status update failed:", err.response?.data || err.message);
+      alert(err.response?.data?.error || "Control failed");
     } finally {
       setLoading(null);
     }

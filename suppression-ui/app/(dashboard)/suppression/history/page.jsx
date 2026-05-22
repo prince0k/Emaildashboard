@@ -55,7 +55,7 @@ export default function SuppressionHistory() {
 
       {/* STATES */}
       {loading && <div className="text-sm text-muted-foreground">Loading jobs…</div>}
-      {error && <div className="text-sm text-red-400">{error}</div>}
+      {error && <div className="text-sm text-destructive">{error}</div>}
       {!loading && jobs.length === 0 && (
         <div className="text-sm text-muted-foreground">No jobs found</div>
       )}
@@ -105,7 +105,7 @@ export default function SuppressionHistory() {
                   <Td>{j.counts?.bounce ?? "-"}</Td>
                   <Td>{j.counts?.complaint ?? "-"}</Td>
 
-                  <Td className="font-semibold text-gray-100">
+                  <Td className="font-semibold text-foreground">
                     {j.finalCount ?? j.counts?.kept ?? "-"}
                   </Td>
 
@@ -113,7 +113,7 @@ export default function SuppressionHistory() {
                     <StatusBadge status={j.status} />
                   </Td>
 
-                  <Td className="font-mono text-xs text-gray-300">
+                  <Td className="font-mono text-xs text-text-secondary">
                     {j.outputFile ? (
                       <>wget {API_ROOT}/output/{j.outputFile}</>
                     ) : (
@@ -147,10 +147,10 @@ function Td({ children, className = "" }) {
 function StatusBadge({ status }) {
   const color =
     status === "DONE"
-      ? "bg-green-600"
+      ? "bg-emerald"
       : status === "FAILED"
-      ? "bg-red-600"
-      : "bg-yellow-500";
+      ? "bg-rose"
+      : "bg-amber";
 
   return (
     <span className={`px-2 py-1 text-xs text-white rounded ${color}`}>

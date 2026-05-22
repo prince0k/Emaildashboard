@@ -16,14 +16,14 @@ export default function SegmentsPage() {
             Segments
           </h1>
 
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-text-muted">
             Build and manage audience segments
           </p>
         </div>
 
         <Link
           href="/segments/create"
-          className="px-4 py-2 bg-blue-600 text-white rounded"
+          className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg transition-colors text-sm"
         >
           Create Segment
         </Link>

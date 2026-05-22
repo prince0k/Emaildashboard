@@ -85,7 +85,7 @@ export default function SegmentCombine(){
         placeholder="New Segment Name"
         value={name}
         onChange={(e)=>setName(e.target.value)}
-        className="border p-2"
+        className="border border-border bg-card text-foreground rounded-lg px-3 py-2 outline-none focus:border-primary transition-colors"
       />
 
       <div className="grid grid-cols-2 gap-6">
@@ -141,7 +141,7 @@ export default function SegmentCombine(){
       <button
         onClick={combine}
         disabled={!name || include.length===0 || loading}
-        className="border px-4 py-2"
+        className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg disabled:bg-muted disabled:text-text-muted disabled:cursor-not-allowed transition-colors cursor-pointer"
       >
         Combine
       </button>

@@ -72,7 +72,7 @@ export default function MultiServerControlPanel({ servers }: any) {
       </div>
 
       {result && (
-        <div className="bg-black/80 text-green-400 p-4 text-xs rounded-lg overflow-auto border border-border">
+        <div className="bg-neutral-950/80 text-emerald p-4 text-xs rounded-lg overflow-auto border border-border">
           <pre>{JSON.stringify(result, null, 2)}</pre>
         </div>
       )}
@@ -100,7 +100,7 @@ export default function MultiServerControlPanel({ servers }: any) {
             setAction(item);
             setOpen(false);
           }}
-          className="px-3 py-2 text-sm cursor-pointer hover:bg-primary hover:text-white transition"
+          className="px-3 py-2 text-sm cursor-pointer hover:bg-primary hover:text-primary-foreground transition"
         >
           {item}
         </div>
@@ -160,21 +160,21 @@ export default function MultiServerControlPanel({ servers }: any) {
           <div className="flex gap-2 text-xs">
             <button
               onClick={() => setSelectedServers(servers.map((s:any)=>s._id))}
-              className="px-2 py-1 rounded bg-muted hover:bg-primary hover:text-white transition"
+              className="px-2 py-1 rounded bg-panel hover:bg-primary hover:text-primary-foreground transition"
             >
               Select All
             </button>
 
             <button
               onClick={() => setSelectedServers([])}
-              className="px-2 py-1 rounded bg-muted hover:bg-destructive hover:text-white transition"
+              className="px-2 py-1 rounded bg-panel hover:bg-rose hover:text-destructive-foreground transition"
             >
               Clear
             </button>
           </div>
         </div>
 
-        <div className="max-h-40 overflow-auto border border-border rounded-lg p-2 bg-muted/30">
+        <div className="max-h-40 overflow-auto border border-border rounded-lg p-2 bg-panel/30">
           {servers.map((s:any)=>(
             <label key={s._id} className="flex items-center gap-2 text-sm py-1 cursor-pointer">
               <input

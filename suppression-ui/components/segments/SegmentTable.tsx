@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { useAuth } from "@/lib/authContext";
 
 export default function SegmentTable() {
 
@@ -14,6 +15,7 @@ export default function SegmentTable() {
     download:string
   }
 
+  const { hasPermission } = useAuth();
   const [segments,setSegments] = useState<Segment[]>([]);
   const [loading,setLoading] = useState(false);
   const [deleting,setDeleting] = useState<string | null>(null);
@@ -75,28 +77,28 @@ export default function SegmentTable() {
 
         <button
           onClick={load}
-          className="px-3 py-1 border rounded"
+          className="px-3 py-1.5 border border-border rounded-lg text-sm text-text-secondary hover:bg-hover hover:text-foreground transition-colors cursor-pointer"
         >
           Reload
         </button>
 
       </div>
 
-      <table className="w-full border">
+      <table className="w-full border border-border text-sm">
 
         <thead>
 
-          <tr className="bg-gray-100">
+          <tr className="bg-panel text-text-secondary">
 
-            <th className="p-2 text-left">
+            <th className="p-3 text-left font-medium border-b border-border">
               Segment
             </th>
 
-            <th className="p-2 text-left">
+            <th className="p-3 text-left font-medium border-b border-border">
               Count
             </th>
 
-            <th className="p-2 text-left">
+            <th className="p-3 text-left font-medium border-b border-border">
               Actions
             </th>
 
@@ -108,7 +110,7 @@ export default function SegmentTable() {
 
           {loading && (
             <tr>
-              <td colSpan={3} className="p-4">
+              <td colSpan={3} className="p-4 text-text-muted">
                 Loading segments...
               </td>
             </tr>
@@ -116,33 +118,35 @@ export default function SegmentTable() {
 
           {!loading && segments.length === 0 && (
             <tr>
-              <td colSpan={3} className="p-4">
+              <td colSpan={3} className="p-4 text-text-muted">
                 No segments found
               </td>
             </tr>
           )}
 
-          {!loading && segments.map((seg)=>(
-            <tr key={seg.file} className="border-t">
+              {!loading && segments.map((seg)=>(
+            <tr key={seg.file} className="border-t border-border hover:bg-hover/30 transition-colors">
 
-              <td className="p-2">
+              <td className="p-3 text-text-secondary border-b border-border">
                 {seg.name}
               </td>
 
-              <td className="p-2">
+              <td className="p-3 text-text-secondary border-b border-border">
                 {seg.count.toLocaleString()}
               </td>
 
-              <td className="p-2 space-x-2">
-
-                <button
-                  disabled={deleting === seg.file}
-                  onClick={()=>remove(seg.file)}
-                  className="text-red-600"
-                >
-                  {deleting === seg.file ? "Deleting..." : "Delete"}
-                </button>
-
+              <td className="p-3 space-x-2 border-b border-border">
+                {hasPermission("campaign.delete") ? (
+                  <button
+                    disabled={deleting === seg.file}
+                    onClick={()=>remove(seg.file)}
+                    className="text-rose hover:underline font-medium cursor-pointer"
+                  >
+                    {deleting === seg.file ? "Deleting..." : "Delete"}
+                  </button>
+                ) : (
+                  <span className="text-xs text-text-muted italic">No access</span>
+                )}
               </td>
 
             </tr>

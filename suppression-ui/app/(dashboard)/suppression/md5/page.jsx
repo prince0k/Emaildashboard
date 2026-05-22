@@ -107,7 +107,7 @@ const progress = results[0];
 
         <button
           onClick={() => router.push("/suppression")}
-          className="text-xs text-blue-400 hover:text-blue-300"
+          className="text-xs text-primary hover:opacity-80 transition-opacity"
         >
           ← Back
         </button>
@@ -136,7 +136,7 @@ const progress = results[0];
                 <button
                   type="button"
                   onClick={() => removeRow(i)}
-                  className="text-destructive hover:text-red-300"
+                  className="text-destructive hover:opacity-80 transition-opacity"
                 >
                   <Trash2 size={18} />
                 </button>
@@ -147,7 +147,7 @@ const progress = results[0];
           <button
             type="button"
             onClick={addRow}
-            className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300"
+            className="flex items-center gap-2 text-sm text-primary hover:opacity-80 transition-opacity"
           >
             <Plus size={16} />
             Add another offer
@@ -155,7 +155,7 @@ const progress = results[0];
 
           <button
             disabled={loading}
-            className="w-full rounded-md bg-green-600 hover:bg-green-500 transition text-white py-2 text-sm font-medium disabled:opacity-60"
+            className="w-full rounded-md bg-primary hover:opacity-90 transition text-white py-2 text-sm font-medium disabled:opacity-60 cursor-pointer"
           >
             {loading ? "Processing…" : "Download & Sync MD5"}
           </button>
@@ -171,7 +171,7 @@ const progress = results[0];
       {/* RESULTS */}
       {results.length > 0 && (
         <div className="rounded-lg border border-border bg-card p-6 space-y-4">
-          <h2 className="text-sm font-medium text-gray-300">
+          <h2 className="text-sm font-medium text-foreground">
             Results
           </h2>
 
@@ -180,19 +180,19 @@ const progress = results[0];
   <div className="space-y-4 text-sm">
     <div className="flex justify-between">
       <span>Total</span>
-      <span>{progress.total}</span>
+      <span className="font-mono">{progress.total}</span>
     </div>
 
     <div className="flex justify-between">
       <span>Completed</span>
-      <span className="text-green-400">
+      <span className="text-emerald font-mono">
         {progress.completed}
       </span>
     </div>
 
     <div className="flex justify-between">
       <span>Failed</span>
-      <span className="text-red-400">
+      <span className="text-rose font-mono">
         {progress.failed}
       </span>
     </div>
@@ -207,9 +207,9 @@ const progress = results[0];
     </div>
 
     {/* Progress Bar */}
-    <div className="w-full bg-gray-700 rounded h-2 mt-2">
+    <div className="w-full bg-panel rounded h-2 mt-2 overflow-hidden">
       <div
-        className="bg-green-500 h-2 rounded transition-all"
+        className="bg-emerald h-2 rounded transition-all"
         style={{
           width: `${
             progress.total > 0

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 type User = {
   id: string;
@@ -13,6 +13,7 @@ type AuthContextType = {
   user: User | null;
   loading: boolean;
   setUser: (user: User | null) => void;
+  hasPermission: (permission: string) => boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,31 +26,36 @@ export const AuthProvider = ({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-useEffect(() => {
-  const fetchUser = async () => {
-    try {
-      const res = await fetch("/api/auth/me", {
-        credentials: "include",
-      });
+  const hasPermission = useCallback((permission: string) => {
+    if (!user) return false;
+    return user.permissions.includes(permission) || user.permissions.includes("*");
+  }, [user]);
 
-      if (!res.ok) {
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await fetch("/api/auth/me", {
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          setUser(null);
+        } else {
+          const data = await res.json();
+          setUser(data.user);
+        }
+      } catch {
         setUser(null);
-      } else {
-        const data = await res.json();
-        setUser(data.user);
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  fetchUser();
-}, []);
+    fetchUser();
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, setUser }}>
+    <AuthContext.Provider value={{ user, loading, setUser, hasPermission }}>
       {children}
     </AuthContext.Provider>
   );

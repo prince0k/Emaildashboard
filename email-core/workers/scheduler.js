@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import Campaign from "../models/Campaign.js";
-import { callSender } from "../api/campaigns/helpers/senderBridge.js";
-import { buildRoutes } from "../api/campaigns/helpers/buildRoutes.js";
+import { campaignQueue } from "../queue/campaignQueue.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -35,28 +34,11 @@ async function checkScheduledCampaigns() {
       try {
         console.log(`Starting campaign: ${campaign.campaignName}`);
 
-        const payload = {
-          campaignName: campaign.campaignName,
-          mode: "LIVE",
-          routes: buildRoutes(campaign.routes),
-          totalSend: campaign.totalSend,
-          sendInMinutes: campaign.sendInMinutes || 60,
-          offerId: campaign.runtimeOfferId,
-        };
-
-        const senderResponse = await callSender(
-          campaign.senderId,
-          "runCampaign.php",
-          payload
-        );
-
-        if (!senderResponse || senderResponse.error) {
-          console.error("Sender failed:", senderResponse);
-
-          campaign.status = "FAILED";
-          await campaign.save();
-          continue;
-        }
+        // Enqueue to BullMQ instead of starting directly
+        await campaignQueue.add("send-campaign", { campaignId: campaign._id }, {
+          removeOnComplete: true,
+          removeOnFail: 100 // keep history of failed
+        });
 
         campaign.status = "RUNNING";
         campaign.startedAt = new Date();

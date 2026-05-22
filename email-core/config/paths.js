@@ -30,4 +30,8 @@ export const PATHS = Object.freeze({
   global: path.join(DATA_ROOT, "global"),
   bounce: path.join(DATA_ROOT, "bounce"),
   complaint: path.join(DATA_ROOT, "complaint"),
+
+  /* ===== DOMAIN-LEVEL SUPPRESSION ===== */
+  domainComplaint: path.join(DATA_ROOT, "complaint", "domain"),
+  domainUnsub: path.join(DATA_ROOT, "unsubscribe", "domain"),
 });

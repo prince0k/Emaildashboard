@@ -28,8 +28,8 @@ export default function ServerCard({ item }: Props) {
         <div
           className={
             item.status === "running"
-              ? "text-green-500"
-              : "text-red-500"
+              ? "text-emerald"
+              : "text-rose"
           }
         >
           {item.status || "unknown"}
@@ -41,14 +41,14 @@ export default function ServerCard({ item }: Props) {
 
           <div className="flex justify-between">
           <span className="text-muted-foreground">Inbound</span>
-          <span className="text-blue-400">
+          <span className="text-primary">
             {inbound.toLocaleString()}
           </span>
         </div>
 
         <div className="flex justify-between">
           <span className="text-muted-foreground">Outbound</span>
-          <span className="text-green-500">
+          <span className="text-emerald">
             {outbound.toLocaleString()}
           </span>
         </div>
@@ -57,7 +57,7 @@ export default function ServerCard({ item }: Props) {
 
         <div className="flex justify-between border-t pt-2 mt-2">
           <span className="text-muted-foreground">Queue Rcpt</span>
-          <span className="text-yellow-400">
+          <span className="text-amber">
             {totalQueueRcpt.toLocaleString()}
           </span>
         </div>

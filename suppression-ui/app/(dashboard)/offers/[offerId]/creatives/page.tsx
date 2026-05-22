@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import CreativeList from "@/components/CreativeList";
 import CreativeEditor from "@/components/CreativeEditor";
 import { Plus, Layers, ArrowLeft, Loader2 } from "lucide-react";
 import api from "@/lib/api";
 
-export default function CreativesPage({ params }: any) {
-  const offerId = params?.offerId;
+export default function CreativesPage({ params }: { params: Promise<{ offerId: string }> }) {
+  const { offerId } = React.use(params);
 
   const [showEditor, setShowEditor] = useState(false);
   const [creativeCount, setCreativeCount] = useState<number | null>(null);
@@ -36,7 +36,7 @@ export default function CreativesPage({ params }: any) {
     <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Back link to Offer Workspace */}
       <Link
-        href={`/offers/${params.offerId}`}
+        href={`/offers/${offerId}`}
         className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-fg transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
@@ -83,13 +83,13 @@ export default function CreativesPage({ params }: any) {
 
       {/* List Card */}
       <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
-        <CreativeList offerId={params.offerId} />
+        <CreativeList offerId={offerId} />
       </div>
 
       {/* Modal */}
       {showEditor && (
         <CreativeEditor
-          offerId={params.offerId}
+          offerId={offerId}
           onClose={() => setShowEditor(false)}
         />
       )}

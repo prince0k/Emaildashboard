@@ -1,29 +1,30 @@
 import type { NextConfig } from "next";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3001";
+const API_BASE = process.env.API_BASE_URL || "http://localhost:3001";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  basePath: process.env.BASE_PATH || process.env.NEXT_PUBLIC_BASE_PATH || "",
 
   async rewrites() {
     return [
-      // OFFERS
       {
-        source: "/api/offers/:path*",
-        destination: `${API_BASE}/api/offers/:path*`,
+        source: "/api/:path*",
+        destination: `${API_BASE}/api/:path*`,
       },
+    ];
+  },
 
-      // MD5 SUPPRESSION
+  async headers() {
+    return [
       {
-        source: "/api/md5-suppression",
-        destination: `${API_BASE}/api/md5-suppression`,
-      },
-
-      // SUPPRESSION PORTAL
-      {
-        source: "/api/suppression/:path*",
-        destination: `${API_BASE}/api/suppression/:path*`,
+        source: "/(.*)",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-XSS-Protection", value: "1; mode=block" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        ],
       },
     ];
   },

@@ -26,7 +26,7 @@ export default function SegmentPreview({
   if (loading) {
     return (
       <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
-        <p className="text-sm text-muted-foreground animate-pulse">
+        <p className="text-sm text-text-muted animate-pulse">
           Calculating segment size...
         </p>
       </div>
@@ -36,7 +36,7 @@ export default function SegmentPreview({
   if (count === null) {
     return (
       <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-text-muted">
           Run preview to estimate segment size
         </p>
       </div>
@@ -53,14 +53,14 @@ export default function SegmentPreview({
         </h3>
 
         {offerName && (
-          <span className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600">
+          <span className="text-xs px-2 py-1 rounded bg-primary/10 text-primary">
             {offerName}
           </span>
         )}
       </div>
 
       {segmentName && (
-        <p className="text-xs text-green-600 font-mono">
+        <p className="text-xs text-emerald font-mono">
           Segment File: {segmentName}
         </p>
       )}
@@ -71,14 +71,14 @@ export default function SegmentPreview({
           {count.toLocaleString()}
         </p>
 
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-text-muted">
           Emails will be included in this segment
         </p>
       </div>
 
       {/* Filters */}
       {filters && (
-        <div className="text-xs bg-muted p-3 rounded-lg space-y-1">
+        <div className="text-xs bg-panel p-3 rounded-lg space-y-1 text-text-secondary border border-border/50">
           {filters.minOpen && <div>Min Opens: {filters.minOpen}</div>}
           {filters.maxOpen && <div>Max Opens: {filters.maxOpen}</div>}
           {filters.minClick && <div>Min Clicks: {filters.minClick}</div>}
@@ -88,7 +88,7 @@ export default function SegmentPreview({
 
       {/* Empty result */}
       {count === 0 && (
-        <div className="text-red-500 text-sm bg-red-50 p-2 rounded">
+        <div className="text-rose text-sm bg-rose/10 border border-rose/20 p-3 rounded-lg">
           No emails match current filters
         </div>
       )}
@@ -100,9 +100,9 @@ export default function SegmentPreview({
             Sample Emails
           </p>
 
-          <div className="text-xs font-mono bg-muted p-3 rounded-lg max-h-40 overflow-auto space-y-1">
+          <div className="text-xs font-mono bg-panel p-3 rounded-lg max-h-40 overflow-auto space-y-1 border border-border/50">
             {sample.map((row, i) => (
-              <div key={i} className="truncate text-muted-foreground">
+              <div key={i} className="truncate text-text-muted">
                 {row}
               </div>
             ))}

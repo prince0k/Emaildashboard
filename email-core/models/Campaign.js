@@ -46,7 +46,11 @@ const SuppressionSchema = new mongoose.Schema(
       global: { type: Number, default: 0 },
       unsubscribe: { type: Number, default: 0 },
       complaint: { type: Number, default: 0 },
+      domain_complaint: { type: Number, default: 0 },
+      domain_unsub: { type: Number, default: 0 },
       bounce: { type: Number, default: 0 },
+      exclusion_removed: { type: Number, default: 0 },
+      inclusion_added: { type: Number, default: 0 },
       kept: { type: Number, default: 0 },
     },
   },
@@ -68,6 +72,8 @@ const SendConfigSchema = new mongoose.Schema(
     // ===== BASIC FIELDS =====
     subject: String,
     fromName: String,
+    subjectIds: [String],
+    fromIds: [String],
 
     trackingMode: {
       type: String,
@@ -119,13 +125,13 @@ const SendConfigSchema = new mongoose.Schema(
 
     textEncoding: {
       type: String,
-      enum: ["base64", "quoted-printable", "7bit"],
+      enum: ["base64", "quoted-printable", "7bit", "8bit"],
       default: "base64",
     },
 
     htmlEncoding: {
       type: String,
-      enum: ["base64", "quoted-printable", "7bit"],
+      enum: ["base64", "quoted-printable", "7bit", "8bit"],
       default: "base64",
     },
 
@@ -226,21 +232,22 @@ const CampaignSchema = new mongoose.Schema(
     offerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Offer",
-      required: true,
+      required: false, // 🔥 Relaxed for drafts
       index: true,
     },
 
     creativeId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Creative",
-      required: true,
+      required: false,
       index: true,
     },
 
 runtimeOfferId: {
   type: String,
-  required: true,
+  required: false, // 🔥 Relaxed for drafts
   unique: true,
+  sparse: true,   // 🔥 required because multiple nulls/empty would conflict
   index: true,
 },
 
@@ -255,11 +262,16 @@ deletedAt: Date,
       type: Number,
       default: 1,
     },
+    
+    htmlOverride: {
+      type: String,
+      default: null,
+    },
 
     sender: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "SenderServer",
-      required: true,
+      required: false, // 🔥 Relaxed for drafts
       index: true,
     },
 
@@ -282,6 +294,13 @@ scheduledAt: {
   index: true,
 },
 
+/* 🔥 NEW — TRIGGER FIELD */
+openTriggerCampaignId: {
+  type: String,
+  default: null,
+  index: true,
+},
+
     isp: {
       type: String,
       trim: true,
@@ -290,7 +309,7 @@ scheduledAt: {
 
     segmentName: {
       type: String,
-      required: true,
+      required: false,
       index: true,
     },
 
@@ -324,6 +343,7 @@ trackingDomain: {
     status: {
       type: String,
       enum: [
+        "DRAFT", // 🔥 ADDED
         "CREATED",
         "SCHEDULED",
         "DEPLOYED",
@@ -339,6 +359,20 @@ trackingDomain: {
       index: true,
     },
 
+
+    /* ===== SUPPRESSION CONFIG (set in Step 3 UI) ===== */
+    suppressionConfig: {
+      queueDomain: { type: String, default: null },
+      skipUnsub: { type: Boolean, default: false },
+      inclusionSegments: [{
+        filename: { type: String, required: true },
+        limit: { type: Number, default: 0 },
+      }],
+      exclusionSegments: [{
+        filename: { type: String, required: true },
+        limit: { type: Number, default: 0 },
+      }],
+    },
 
     suppression: SuppressionSchema,
     suppressionRunAt: { type: Date, index: true },
@@ -361,6 +395,7 @@ trackingDomain: {
   },
   {
     timestamps: true,
+    versionKey: false, // 🚀 Disable versioning to prevent "No matching document found" errors
   }
 );
 

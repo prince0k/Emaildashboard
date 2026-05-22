@@ -20,7 +20,8 @@ function clean(str) {
     .replace(/^_|_$/g, "");       // start/end _ remove
 }
 
-const SEGMENT_DIR = "/var/www/email-core-data/segments";
+const DATA_ROOT = process.env.DATA_ROOT || "/var/www/email-core-data";
+const SEGMENT_DIR = path.join(DATA_ROOT, "segments");
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function toNumberOrNull(value) {

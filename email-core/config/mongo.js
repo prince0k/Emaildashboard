@@ -12,6 +12,18 @@ export default async function connectMongo() {
     });
 
     console.log("✅ MongoDB connected (mongoose)");
+
+    mongoose.connection.on("disconnected", () => {
+      console.warn("⚠️ MongoDB disconnected — attempting to reconnect...");
+    });
+
+    mongoose.connection.on("error", (err) => {
+      console.error("🔥 MongoDB connection error:", err);
+    });
+
+    mongoose.connection.on("reconnected", () => {
+      console.log("✅ MongoDB reconnected");
+    });
   } catch (err) {
     console.error("❌ MongoDB connection failed", err);
     process.exit(1);

@@ -36,11 +36,11 @@ export default function TrafficTable({ traffic }: any) {
 
                 <td className="py-2">{row.label}</td>
 
-                <td className="text-center py-2 text-green-500">
+                <td className="text-center py-2 text-emerald">
                   {data.inbound_msgs ?? 0}
                 </td>
 
-                <td className="text-center py-2 text-blue-500">
+                <td className="text-center py-2 text-primary">
                   {data.outbound_msgs ?? 0}
                 </td>
 

@@ -5,11 +5,11 @@
 
 import Campaign from "../../models/Campaign.js";
 import { buildRoutes } from "./helpers/buildRoutes.js";
-import { callSender } from "./helpers/senderBridge.js";
 import SubjectLine from "../../models/SubjectLine.js";
 import FromLine from "../../models/FromLine.js";
 import SenderServer from "../../models/SenderServer.js";
 import SuppressionJob from "../../models/SuppressionJob.js";
+import { campaignQueue } from "../../queue/campaignQueue.js";
 
 
 export default async function runCampaign(req, res) {
@@ -268,61 +268,11 @@ if (mode === "LIVE") {
     }
 
     /* ================= CREATIVE OVERRIDE ================= */
+    // Creative HTML is stored in MongoDB (htmlOverride field).
+    // The worker reads it directly from the campaign doc — no sender file needed.
 
-    let creativeWasOverridden = false;
-
-    // 🔥 force override even on resume
-    const html =
-      typeof creativeHtmlOverride === "string" && creativeHtmlOverride.trim() !== ""
-        ? creativeHtmlOverride.trim()
-        : null;
-
-    if (!html) {
-      console.warn("⚠️ No creative override provided");
-    } else {
-      const updateRes = await callSender(
-        campaignDoc.sender,
-        "updateCreative.php",
-        {
-          campaignName: campaignDoc.campaignName,
-          html,
-        }
-      );
-
-      if (!updateRes || updateRes.error) {
-        return res.status(502).json({
-          error: "creative_update_failed",
-          details: updateRes,
-        });
-      }
-
-      creativeWasOverridden = true;
-    } // ✅🔥 YE MISSING THA
-
-    /* ================= HEADER OVERRIDE (SL / FL) ================= */
-
-    let headersWereOverridden = false;
-
-    if (subject || fromName) {
-
-      const headerUpdateRes = await callSender(
-        campaignDoc.sender,
-        "updateHeaders.php",
-        {
-          campaignName: campaignDoc.campaignName,
-          subject: finalSubject,
-          fromName: finalFromName
-        }
-      );
-
-      if (!headerUpdateRes || headerUpdateRes.error) {
-        return res.status(502).json({
-          error: "header_update_failed",
-          details: headerUpdateRes,
-        });
-      }
-
-      headersWereOverridden = true;
+    if (creativeHtmlOverride && typeof creativeHtmlOverride === "string" && creativeHtmlOverride.trim() !== "") {
+      campaignDoc.htmlOverride = creativeHtmlOverride.trim();
     }
 
     /* ================= BUILD PAYLOAD ================= */
@@ -365,165 +315,55 @@ if (mode === "LIVE") {
     };
 
     if (mode === "TEST") {
-  payload.seeds = seeds;
-  payload.totalSend = seeds.length;   // 🔥 CRITICAL FIX
-}
-
-if (mode === "LIVE") {
-  payload.totalSend = parsedTotalSend;
-
-  if (parsedSendSeconds > 0)
-    payload.sendInSeconds = parsedSendSeconds;
-
-  if (parsedSendMinutes > 0)
-    payload.sendInMinutes = parsedSendMinutes;
-
-  if (parsedSendHours > 0)
-    payload.sendInHours = parsedSendHours;
-
-  if (parsedSeedAfter > 0) {
-    payload.seeds = seeds;
-    payload.seedAfter = parsedSeedAfter;
-    payload.seedMode = parsedSeedMode;
-  }
-
-  // 🔥 ADD HERE ONLY
-  if (!req.body.isResume) {
-    payload.finalDataFileUrl =
-      `${FILE_BASE_URL}/${campaignDoc.suppression.outputFile}`;
-  }
-}
-
-if (req.body.isResume) {
-  payload.isResume = true;
-}
-// console.log("FINAL PAYLOAD TO SENDER:", JSON.stringify(payload, null, 2));
-    const senderResponse = await callSender(
-      campaignDoc.sender,
-      "runCampaign.php",
-      payload
-    );
-
-    if (!senderResponse || senderResponse.error) {
-  return res.status(502).json({
-    error: "sender_failed",
-    details: senderResponse,
-  });
-}
-
-// Accept multiple success formats from sender
-const isSuccess =
-  senderResponse.status === "started" ||
-  senderResponse.status === "ok" ||
-  senderResponse.success === true;
-
-if (!isSuccess) {
-  return res.status(502).json({
-    error: "sender_invalid_response",
-    details: senderResponse,
-  });
-}
-
-    /* ================= SAVE SEND CONFIG SNAPSHOT ================= */
-// console.log("REQ.USER OBJECT:", req.user);
-campaignDoc.sendConfig = {
-  mode,
-
-  subject: finalSubject,
-  fromName: finalFromName,
-
-  trackingMode: finalTrackingMode,
-  trackingDomain: finalTrackingDomain,
-
-  aliases: Array.isArray(aliases) ? aliases : [],
-  seeds: Array.isArray(seeds) ? seeds : [],
-
-  totalSend:
-    mode === "TEST"
-      ? (Array.isArray(seeds) ? seeds.length : 0)
-      : Number(parsedTotalSend) || 0,
-
-  sendInSeconds: parsedSendSeconds > 0 ? parsedSendSeconds : undefined,
-  sendInMinutes: parsedSendMinutes > 0 ? parsedSendMinutes : undefined,
-  sendInHours: parsedSendHours > 0 ? parsedSendHours : undefined,
-
-  seedAfter: parsedSeedAfter > 0 ? parsedSeedAfter : 0,
-  seedMode: parsedSeedMode,
-
-  contentMode: payload.contentMode,
-  textEncoding: payload.textEncoding,
-  htmlEncoding: payload.htmlEncoding,
-
-  envelopeMode: payload.envelopeMode,
-  headerMode: payload.headerMode,
-
-  createdBy: req.user.mongoId
-};
-
-
-    /* ================= STATUS UPDATE ================= */
-
-    campaignDoc.execution = campaignDoc.execution || {};
+      payload.seeds = seeds;
+      payload.totalSend = seeds.length;   // 🔥 CRITICAL FIX
+    }
 
     if (mode === "LIVE") {
-      campaignDoc.status = "RUNNING";
-      campaignDoc.execution = {
-      ...campaignDoc.execution,
-      startedAt: new Date(),
+      payload.totalSend = parsedTotalSend;
 
-      totalSend: parsedTotalSend,
+      if (parsedSendSeconds > 0)
+        payload.sendInSeconds = parsedSendSeconds;
 
-      sendDurationSeconds:
-        parsedSendSeconds ||
-        (parsedSendMinutes ? parsedSendMinutes * 60 : null) ||
-        (parsedSendHours ? parsedSendHours * 3600 : null),
+      if (parsedSendMinutes > 0)
+        payload.sendInMinutes = parsedSendMinutes;
 
-      mode
-    };
+      if (parsedSendHours > 0)
+        payload.sendInHours = parsedSendHours;
 
-      // 🔒 Mark LIVE as permanently executed
-      campaignDoc.liveExecuted = true;
-    }
-
-
-    if (mode === "TEST") {
-      campaignDoc.testedAt = new Date();
-
-      // 🔥 only set TESTED if LIVE kabhi run nahi hua
-      if (!campaignDoc.liveExecuted) {
-        campaignDoc.status = "TESTED";
+      if (parsedSeedAfter > 0) {
+        payload.seeds = seeds;
+        payload.seedAfter = parsedSeedAfter;
+        payload.seedMode = parsedSeedMode;
       }
     }
+  
+    /* ================= START LOCAL WORKER ================= */
 
-    /* ================= UPDATE SUPPRESSION HISTORY ================= */
-
-    if (mode === "LIVE" && campaignDoc.suppression?.jobId) {
-
-      await SuppressionJob.findByIdAndUpdate(
-        campaignDoc.suppression.jobId,
-        {
-          $set: {
-            status: "USED",
-            usedByCampaign: campaignDoc._id,
-            usedAt: new Date()
-          }
-        }
-      );
-
-    }
-
-    campaignDoc.routes = normalizedRoutes;
+    campaignDoc.status = "RUNNING";
+    campaignDoc.liveExecuted = mode === "LIVE";
+    campaignDoc.execution = {
+      ...campaignDoc.execution,
+      startedAt: new Date(),
+      totalSent: 0,
+      totalSend: mode === "TEST" ? (seeds?.length || 0) : Number(parsedTotalSend) || 0,
+    };
+    
     await campaignDoc.save();
-    console.log("DEBUG SENDCONFIG:", campaignDoc.sendConfig);
+
+    // Fire and forget worker
+    campaignQueue.add("send-campaign", { campaignId: campaignDoc._id }, {
+      removeOnComplete: true,
+      removeOnFail: 100
+    }).catch(err => {
+      console.error("CAMPAIGN WORKER START ERROR:", err);
+    });
+
     return res.json({
       status: "started",
       campaign: campaignDoc.campaignName,
       mode,
-      creativeOverridden: creativeWasOverridden,
-      headersOverridden: headersWereOverridden,
-      sender: senderResponse,
     });
-
   } catch (err) {
     console.error("RUN CAMPAIGN ERROR:", err);
 

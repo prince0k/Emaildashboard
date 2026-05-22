@@ -8,7 +8,6 @@ const router = express.Router();
 router.get(
   "/",
   auth,
-  checkPermission("permission.view"),
   async (req, res) => {
     const permissions = await Permission.find().sort("module");
     res.json({ permissions });

@@ -63,15 +63,15 @@ export default function SegmentSplit(){
       <select
         value={segment}
         onChange={(e)=>setSegment(e.target.value)}
-        className="border p-2"
+        className="border border-border bg-card text-foreground px-3 py-2 rounded-lg outline-none focus:border-primary transition-colors cursor-pointer w-full max-w-md block"
       >
 
-        <option value="">
+        <option value="" className="bg-card text-foreground">
           Select Segment
         </option>
 
         {segments.map(seg=>(
-          <option key={seg.file} value={seg.file}>
+          <option key={seg.file} value={seg.file} className="bg-card text-foreground">
             {seg.name} ({seg.count})
           </option>
         ))}
@@ -82,14 +82,14 @@ export default function SegmentSplit(){
         type="number"
         value={parts}
         onChange={(e)=>setParts(Number(e.target.value))}
-        className="border p-2"
+        className="border border-border bg-card text-foreground px-3 py-2 rounded-lg outline-none focus:border-primary transition-colors block w-24"
         min={2}
       />
 
       <button
         onClick={split}
         disabled={!segment || loading}
-        className="border px-4 py-2"
+        className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg disabled:bg-muted disabled:text-text-muted disabled:cursor-not-allowed transition-colors cursor-pointer block"
       >
         Split Segment
       </button>

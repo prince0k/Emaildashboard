@@ -9,8 +9,12 @@ const CountsSchema = new mongoose.Schema(
     global: { type: Number, default: 0 },
     unsubscribe: { type: Number, default: 0 },
     complaint: { type: Number, default: 0 },
+    domain_complaint: { type: Number, default: 0 },
+    domain_unsub: { type: Number, default: 0 },
     bounce: { type: Number, default: 0 },
     duplicates: { type: Number, default: 0 },
+    exclusion_removed: { type: Number, default: 0 },
+    inclusion_added: { type: Number, default: 0 },
     kept: { type: Number, default: 0 },
   },
   { _id: false }
@@ -38,6 +42,9 @@ const SuppressionJobSchema = new mongoose.Schema(
     /* ---------- INPUT ---------- */
     inputFile: { type: String, required: true },
     md5FileName: String,
+
+    /* ---------- DOMAIN SCOPE ---------- */
+    queueDomain: { type: String, index: true },
 
     /* ---------- COUNTS ---------- */
     counts: {

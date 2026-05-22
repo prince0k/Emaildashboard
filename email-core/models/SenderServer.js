@@ -69,28 +69,7 @@ const SenderServerSchema = new Schema(
       type: [RouteSchema],
       default: [],
     },
-    pmta: {
-      host: {
-        type: String,
-        trim: true
-      },
-      sshUser: {
-        type: String,
-        trim: true
-      },
-      sshPort: {
-        type: Number,
-        default: 22
-      },
-      sshKeyPath: {
-        type: String,
-        trim: true
-      },
-      apiPort: {
-        type: Number,
-        default: 8080
-      }
-    },
+
     active: {
       type: Boolean,
       default: true,

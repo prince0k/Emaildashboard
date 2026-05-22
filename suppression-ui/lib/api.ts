@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_ROOT = process.env.NEXT_PUBLIC_API_URL;
+export const API_ROOT = process.env.NEXT_PUBLIC_API_URL;
 
 if (!API_ROOT) {
   throw new Error("NEXT_PUBLIC_API_URL is not defined");
@@ -15,8 +15,11 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error?.response?.status === 401 && typeof window !== "undefined") {
-      document.cookie = "token=; path=/; max-age=0";
-      window.location.href = "/login";
+      const cookieName = process.env.NEXT_PUBLIC_COOKIE_NAME || "token";
+      const cookiePath = process.env.NEXT_PUBLIC_COOKIE_PATH || "/";
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+      document.cookie = `${cookieName}=; path=${cookiePath}; max-age=0`;
+      window.location.href = basePath + "/login";
     }
     return Promise.reject(error);
   }

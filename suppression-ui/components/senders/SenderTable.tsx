@@ -11,6 +11,8 @@ type Props = {
   onRefresh: () => void;
 };
 
+import api from "@/lib/api";
+
 export default function SenderTable({ senders, loading, onEdit, onRefresh }: Props) {
   const [processingId, setProcessingId] = useState<string | null>(null);
 
@@ -18,18 +20,12 @@ export default function SenderTable({ senders, loading, onEdit, onRefresh }: Pro
     try {
       setProcessingId(id);
 
-      const res = await fetch(`/api/senders/${id}`, {
-        method: "PATCH",
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        alert(err.error || `Failed to ${currentStatus ? 'deactivate' : 'activate'} sender`);
-        return;
-      }
+      await api.patch(`/senders/${id}/toggle`);
 
       onRefresh();
+    } catch (err: any) {
+      console.error("Failed to toggle sender", err);
+      alert(err.response?.data?.error || `Failed to ${currentStatus ? 'deactivate' : 'activate'} sender`);
     } finally {
       setProcessingId(null);
     }
@@ -41,18 +37,12 @@ export default function SenderTable({ senders, loading, onEdit, onRefresh }: Pro
     try {
       setProcessingId(id);
 
-      const res = await fetch(`/api/senders/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        alert(err.error || "Removal failed");
-        return;
-      }
+      await api.delete(`/senders/${id}`);
 
       onRefresh();
+    } catch (err: any) {
+      console.error("Failed to delete sender", err);
+      alert(err.response?.data?.error || "Removal failed");
     } finally {
       setProcessingId(null);
     }

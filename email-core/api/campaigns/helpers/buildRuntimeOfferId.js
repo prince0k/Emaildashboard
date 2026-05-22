@@ -11,34 +11,20 @@ export function buildRuntimeOfferId({
   server,
   sid,
   cid,
-  user,
+  campaignName,
   override,
 }) {
-
   if (override) return clean(override, 80);
 
-  if (!server || !sid || !cid || !user) {
+  if (!server || !sid || !cid || !campaignName) {
     throw new Error("runtime_offer_id_missing_required_fields");
   }
 
-  const now = new Date();
-
-  const dateStr =
-    now.getUTCFullYear().toString() +
-    String(now.getUTCMonth() + 1).padStart(2, "0") +
-    String(now.getUTCDate()).padStart(2, "0");
-
-  const random5 = Math.floor(Math.random() * 100000)
-    .toString()
-    .padStart(5, "0");
-
   return [
-    clean(server, 15),
-    clean(sid, 15),
-    clean(cid, 15),
-    clean(user, 15),
-    dateStr,
-    random5
+    clean(server, 10),
+    clean(cid, 10),
+    clean(sid, 10),
+    clean(campaignName, 40)
   ]
     .filter(Boolean)
     .join("_");

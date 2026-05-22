@@ -1,13 +1,15 @@
 "use client";
 
+import React from "react";
 import SubjectLineManager from "@/components/SubjectLineManager";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 export default function SubjectLinesPage({ params }) {
+  const { offerId } = React.use(params);
   return (
     <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
       <Link
-        href={`/offers/${params.offerId}`}
+        href={`/offers/${offerId}`}
         className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-fg transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
@@ -20,7 +22,7 @@ export default function SubjectLinesPage({ params }) {
         </p>
       </div>
 
-      <SubjectLineManager offerId={params.offerId} />
+      <SubjectLineManager offerId={offerId} />
     </div>
   );
 }

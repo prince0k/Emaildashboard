@@ -1,10 +1,11 @@
 "use client";
 
+import React from "react";
 import FromLineManager from "@/components/FromLineManager";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 export default function FromLinesPage({ params }) {
-  const { offerId } = params;
+  const { offerId } = React.use(params);
 
   if (!offerId) {
     return <div className="p-6 text-sm text-red-400">Invalid offer ID</div>;
@@ -13,7 +14,7 @@ export default function FromLinesPage({ params }) {
   return (
     <div className="max-w-4xl mx-auto px-6 py-6 space-y-4">
       <Link
-        href={`/offers/${params.offerId}`}
+        href={`/offers/${offerId}`}
         className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-fg transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />

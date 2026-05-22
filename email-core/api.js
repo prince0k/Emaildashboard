@@ -7,9 +7,11 @@ import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import compression from "compression";
 
 import connectMongo from "./config/mongo.js";
 // import { startPmtaMonitor } from "./workers/pmtaMonitorWorker.js";
+import { startBullWorker } from "./workers/bullWorker.js"; // Import the queue worker starter
 
 /* ======================
   ROUTES
@@ -44,6 +46,12 @@ import trimSegment from "./api/segments/trim.js";
 import combineSegments from "./api/segments/combine.js";
 import splitSegment from "./api/segments/split.js";
 /* TRACKING (PUBLIC) */
+import leadStats from "./api/leads/stats.js";
+import sendWelcome from "./api/welcome/send.js";
+import sendVerify from "./api/welcome/sendVerify.js";
+import sendPersonalised from "./api/welcome/sendPersonalised.js";
+import triggerRoutes from "./api/triggers/index.js";
+import permissionRequestRoutes from "./api/permission-requests/index.js";
 import pmtaStats from "./api/pmta/stats.js";
 import pmtaHistory from "./api/pmta/history.js";
 import commandRoute from "./api/pmta/command.js";
@@ -55,6 +63,7 @@ import checkPermission from "./middleware/checkPermission.js";
 import roleRoutes from "./api/roles.js";
 import permissionRoutes from "./api/permissions.js";
 import userRoutes from "./api/users/index.js";
+import testIdsRoutes from "./api/testIds.js";
 const app = express();
 
 /* ======================
@@ -85,6 +94,14 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later." },
+});
+
 /* ======================
   PATH SETUP
 ====================== */
@@ -101,6 +118,15 @@ if (!fs.existsSync(TEMP_DIR)) {
   GLOBAL MIDDLEWARE
 ====================== */
 
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV !== "production") {
+    console.log(`📡 [${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  }
+  next();
+});
+
+app.use(compression());
+app.use(globalLimiter);
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -120,17 +146,17 @@ app.use((req, res, next) => {
 /* ======================
   ROLES
 ====================== */
-app.use("/api/roles", auth, checkPermission("role.manage"), roleRoutes);
+app.use("/api/roles", auth, checkPermission("role.view"), roleRoutes);
 
 /* ======================
   PERMISSIONS
 ====================== */
-app.use("/api/permissions", auth, checkPermission("permission.manage"), permissionRoutes);
+app.use("/api/permissions", auth, permissionRoutes);
 
 /* ======================
   USERS
 ====================== */
-app.use("/api/users", auth, checkPermission("user.manage"), userRoutes);
+app.use("/api/users", auth, checkPermission("user.view"), userRoutes);
 
 
 /* ======================
@@ -148,6 +174,12 @@ app.get("/api/health", (req, res) =>
 app.post("/api/campaigns/updateTotalSent", updateTotalSent);
 app.post("/api/campaigns/updatePmtaStats", updatePmtaStats);
 app.post("/api/campaigns/updateStatus", updateStatusPublic);
+
+/* Welcome & Verification (Auth handled internally via X-Internal-Key) */
+app.post("/api/welcome/send", sendWelcome);
+app.post("/api/welcome/send-verify", sendVerify);
+app.post("/api/welcome/send-personalised", sendPersonalised);
+
 /* ======================
   AUTH REQUIRED ROUTES
 ====================== */
@@ -182,6 +214,12 @@ app.use("/api", md5Status);
 /* ======================
   CAMPAIGNS
 ====================== */
+
+import { listTriggers, createTrigger, deleteTrigger, testTrigger } from "./api/triggers/campaignTriggers.js";
+app.get("/api/campaign-triggers", auth, listTriggers);
+app.post("/api/campaign-triggers", auth, createTrigger);
+app.post("/api/campaign-triggers/test", auth, testTrigger);
+app.delete("/api/campaign-triggers/:id", auth, deleteTrigger);
 
 app.use("/api/campaigns", auth, campaignRoutes);
 
@@ -258,6 +296,10 @@ app.use(
   senderRoutes
 );
 
+app.use("/api/triggers", triggerRoutes);
+app.use("/api/permission-requests", permissionRequestRoutes);
+
+app.use("/api/test-ids", auth, testIdsRoutes);
 
 app.use("/api/pmta/stats", auth, pmtaStats);
 app.use("/api/pmta/history", auth, pmtaHistory);
@@ -326,7 +368,7 @@ app.post(
 
 app.use(
   "/output",
-  express.static("/var/www/email-core-data/output", {
+  express.static(path.join(process.env.DATA_ROOT || "", "output"), {
     index: false,
     fallthrough: false,
   })
@@ -334,8 +376,8 @@ app.use(
 
 app.use(
   "/creative_assets",
-  express.static("/var/www/email-core-data/creative_assets")
-)
+  express.static(path.join(process.env.DATA_ROOT || "", "creative_assets"))
+);
 
 
 /* ======================
@@ -343,6 +385,7 @@ app.use(
 ====================== */
 
 app.use((req, res) => {
+  console.log(`404 NOT FOUND: ${req.method} ${req.originalUrl}`);
   res.status(404).json({ error: "Route not found" });
 });
 
@@ -369,19 +412,52 @@ app.use((err, req, res, next) => {
 
 async function start() {
   await connectMongo();
+  await startBullWorker();
 
   // 🔹 Start PMTA monitoring worker
   // startPmtaMonitor();
 
   const PORT = process.env.PORT || 3001;
 
-  const server = app.listen(PORT, () => {
-    console.log(`✅ API running on port ${PORT}`);
+  const server = app.listen(PORT, "127.0.0.1", () => {
+    console.log(`✅ API running on 127.0.0.1:${PORT}`);
   });
 
-  // ✅ ADD THESE
+  // ✅ Keep-alive timeouts
   server.keepAliveTimeout = 60000;   // 60 sec
   server.headersTimeout = 65000;
+
+  // ✅ Graceful shutdown
+  const gracefulShutdown = (signal) => {
+    console.log(`🛑 ${signal} received. Shutting down gracefully...`);
+    server.close(async () => {
+      try {
+        const { campaignQueue } = await import("./queue/campaignQueue.js");
+        await campaignQueue.close();
+        console.log("✅ Bull queue closed");
+      } catch (e) {
+        console.warn("⚠️ Bull queue close failed:", e.message);
+      }
+      try {
+        const mongoose = (await import("mongoose")).default;
+        await mongoose.connection.close();
+        console.log("✅ MongoDB connection closed");
+      } catch (e) {
+        console.warn("⚠️ MongoDB close failed:", e.message);
+      }
+      console.log("✅ Graceful shutdown complete");
+      process.exit(0);
+    });
+
+    // Force exit after 15 seconds if graceful shutdown fails
+    setTimeout(() => {
+      console.error("🔥 Forced exit after timeout");
+      process.exit(1);
+    }, 15000);
+  };
+
+  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+  process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 }
 
 start();
@@ -396,4 +472,5 @@ process.on("unhandledRejection", (err) => {
 
 process.on("uncaughtException", (err) => {
   console.error("🔥 UNCAUGHT EXCEPTION:", err);
+  process.exit(1);
 });

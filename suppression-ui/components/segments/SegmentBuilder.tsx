@@ -415,13 +415,13 @@ export default function SegmentBuilder() {
       />
 
       {segmentName && (
-        <p className="text-xs text-green-700 font-mono">Segment File: {segmentName}</p>
+        <p className="text-xs text-emerald font-mono">Segment File: {segmentName}</p>
       )}
 
       <button
         onClick={generate}
         disabled={loading}
-        className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition"
+        className="bg-emerald hover:bg-emerald/90 text-white px-4 py-2 rounded-lg font-medium transition cursor-pointer"
       >
         Generate Segment
       </button>

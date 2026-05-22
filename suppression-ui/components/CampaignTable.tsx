@@ -1,6 +1,36 @@
-  "use client";
-  import { useState } from "react";
-  import StatusBadge from "./StatusBadge";
+/**
+ * @fileoverview CampaignTable Component
+ *
+ * MODIFIED: Bulk Selection and Deletion Support
+ * ─────────────────────────────────────────────────────────────────────────────
+ * This component has been updated to support multi-campaign selection and
+ * bulk deletion directly from the Campaign Manager table UI.
+ *
+ * New State:
+ *   - selectedCampaignIds: Set<string>
+ *       Tracks which campaign IDs are currently checked/selected.
+ *
+ * New UI Elements:
+ *   - Checkbox column (48px, non-resizable) prepended to the table.
+ *   - Master checkbox in the column header → selects/deselects all on the page.
+ *   - Per-row checkbox in each campaign row.
+ *   - Floating bulk-actions bar (visible when selectedCampaignIds.size > 0):
+ *       · Shows count of selected campaigns.
+ *       · "Cancel" button  → clears the selection.
+ *       · "Delete Selected" button → visible only with `campaign.delete` permission.
+ *
+ * New Behaviour:
+ *   - Selection auto-resets on any campaigns list change (pagination, filter, search).
+ *   - handleBulkDelete() sends selected IDs to DELETE /api/campaigns/delete,
+ *     prompts for user confirmation, then refreshes the campaign list.
+ *   - All existing single-row delete actions are fully preserved and unaffected.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+"use client";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import StatusBadge from "./StatusBadge";
   import CampaignControls from "./CampaignControls";
   import Link from "next/link";
   import { MagnifyingGlassIcon, FunnelIcon } from "@heroicons/react/24/outline";
@@ -53,6 +83,23 @@
     setSort: (value: Sort) => void;
     onQuickView: (campaign: any) => void;
   }) {
+    const router = useRouter();
+    // ─── Bulk Selection State ─────────────────────────────────────────────────────
+    // Tracks the IDs of all campaigns currently selected via checkboxes.
+    // Using a Set for O(1) add/delete/has operations and clean React state updates.
+    // ─────────────────────────────────────────────────────────────────────────────
+    const [selectedCampaignIds, setSelectedCampaignIds] = useState<Set<string>>(new Set());
+
+    // ─── Auto-Reset Selection on List Change ─────────────────────────────────────
+    // Whenever the campaigns list changes (new page, applied filter, search query),
+    // clear all selections immediately. This prevents stale IDs — selected on a
+    // previous page or filter state — from being accidentally included in a
+    // bulk delete that the user did not intend.
+    // ─────────────────────────────────────────────────────────────────────────────
+    useEffect(() => {
+      setSelectedCampaignIds(new Set());
+    }, [campaigns]);
+
     const handleSort = (uiKey: string) => {
     const actualField = sortFieldMap[uiKey] || uiKey;
 
@@ -64,7 +111,7 @@
           : "asc",
     });
   };
-    const { user } = useAuth();
+    const { user, hasPermission } = useAuth();
 
 const handleCopy = async (campaignId: string) => {
   const res = await fetch("/api/campaigns/copy", {
@@ -79,7 +126,9 @@ const handleCopy = async (campaignId: string) => {
 
   localStorage.setItem("copyCampaignData", JSON.stringify(data.data));
 
-  window.location.href = "/campaigns/create";
+  // Replaced window.location.href with router.push to avoid a full
+  // browser reload and preserve the Campaign Manager layout state.
+  router.push("/campaigns/create");
 };
 const handleDelete = async (campaignId: string) => {
   if (!confirm("Delete this campaign?")) return;
@@ -99,6 +148,56 @@ const handleDelete = async (campaignId: string) => {
     console.error(err);
   }
 };
+
+    // ─── handleBulkDelete ─────────────────────────────────────────────────────────
+    // Orchestrates the full bulk deletion flow:
+    //   1. Show a confirmation dialog so the user explicitly confirms the action.
+    //   2. POST the array of selectedCampaignIds to DELETE /api/campaigns/delete.
+    //   3. On success  → clear selection and trigger a campaign list refresh.
+    //   4. On failure  → surface the API error message to the user (e.g., if any
+    //      of the selected campaigns have status RUNNING, the API returns HTTP 400
+    //      with the names of the blocking campaigns — display that message as-is).
+    // ─────────────────────────────────────────────────────────────────────────────
+    const handleBulkDelete = async () => {
+      if (selectedCampaignIds.size === 0) return;
+
+      const selectedCampaigns = campaigns.filter((c) => selectedCampaignIds.has(c._id));
+      const runningCampaigns = selectedCampaigns.filter((c) => c.status === "RUNNING");
+
+      if (runningCampaigns.length > 0) {
+        alert(
+          `Cannot delete selected campaigns because some are currently running:\n${runningCampaigns
+            .map((c) => c.campaignName)
+            .join("\n")}`
+        );
+        return;
+      }
+
+      if (!confirm(`Are you sure you want to delete the ${selectedCampaignIds.size} selected campaign(s)?`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/campaigns/delete", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ campaignId: Array.from(selectedCampaignIds) }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || data.error || "Failed to delete campaigns");
+        }
+
+        setSelectedCampaignIds(new Set());
+        refresh();
+      } catch (err: any) {
+        console.error(err);
+        alert(`Delete failed: ${err.message}`);
+      }
+    };
     const sortFieldMap: Record<string, string> = {
     createdByUserId: "createdByUserId",
     senderServerId: "senderServerId",
@@ -221,6 +320,7 @@ const handleDelete = async (campaignId: string) => {
             "
           >
             <option value="">All Status</option>
+            <option value="DRAFT">Draft</option>
             <option value="RUNNING">Running</option>
             <option value="PAUSED">Paused</option>
             <option value="STOPPED">Stopped</option>
@@ -245,12 +345,75 @@ const handleDelete = async (campaignId: string) => {
       </button>
     </div>
 
+      {/* ─── Bulk Actions Bar ─────────────────────────────────────────────────────────
+      // Rendered only when at least one campaign is selected (selectedCampaignIds.size > 0).
+      // Displays:
+      //   · Count of currently selected campaigns.
+      //   · "Cancel" → clears selection without any destructive action.
+      //   · "Delete Selected" → shown only if the user has `campaign.delete` permission.
+      //     Triggers handleBulkDelete() on click.
+      // ───────────────────────────────────────────────────────────────────────────── */}
+      {selectedCampaignIds.size > 0 && (
+        <div className="flex items-center justify-between px-6 py-4 bg-rose/10 border-b border-rose/20 text-rose animate-fadeIn duration-200">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <TrashIcon className="w-5 h-5 text-rose" />
+            <span>{selectedCampaignIds.size} campaign(s) selected</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSelectedCampaignIds(new Set())}
+              className="px-4 py-2 text-xs font-semibold rounded-xl border border-border/60 bg-card hover:bg-hover text-text-primary transition cursor-pointer"
+            >
+              Cancel
+            </button>
+            {hasPermission("campaign.delete") && (
+              <button
+                onClick={handleBulkDelete}
+                className="px-5 py-2 text-xs font-semibold rounded-xl bg-rose text-white hover:opacity-90 transition cursor-pointer shadow-md"
+              >
+                Delete Selected
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
         {/* TABLE */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left table-fixed border-collapse">
-            <thead className="sticky top-0 z-10 bg-background/90 backdrop-blur-md text-[11px] uppercase tracking-wider border-b border-border/60 text-muted-foreground">  <tr>
-
-  {[
+            <thead className="sticky top-0 z-10 bg-background/90 backdrop-blur-md text-[11px] uppercase tracking-wider border-b border-border/60 text-muted-foreground">
+              <tr>
+                {hasPermission("campaign.delete") && (
+                  // ─── Master Checkbox (Select All / Deselect All) ──────────────────────────────
+                  // Checked state:
+                  //   - Checked      → all campaigns on the current page are selected.
+                  //   - Indeterminate → some (but not all) campaigns on the page are selected.
+                  //   - Unchecked    → no campaigns are selected.
+                  // Clicking toggles between selecting all current-page campaigns and clearing all.
+                  // ─────────────────────────────────────────────────────────────────────────────
+                  <th className="px-4 py-3 w-12 text-center select-none">
+                    <input
+                      type="checkbox"
+                      checked={
+                        campaigns.length > 0 &&
+                        campaigns.every((c) => selectedCampaignIds.has(c._id))
+                      }
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          const newSelected = new Set(selectedCampaignIds);
+                          campaigns.forEach((c) => newSelected.add(c._id));
+                          setSelectedCampaignIds(newSelected);
+                        } else {
+                          const newSelected = new Set(selectedCampaignIds);
+                          campaigns.forEach((c) => newSelected.delete(c._id));
+                          setSelectedCampaignIds(newSelected);
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-border bg-background text-primary focus:ring-primary/40 cursor-pointer"
+                    />
+                  </th>
+                )}
+                {[
     { key: "createdByUserId", label: "User ID", align: "left" },
     { key: "createdAt", label: "Created", align: "right" },
     { key: "senderServerId", label: "Sender Server", align: "left" },
@@ -283,21 +446,16 @@ const handleDelete = async (campaignId: string) => {
 
       <div
         onMouseDown={(e) => startResize(e, col.key)}
-        className="absolute top-0 right-0 h-full w-2 cursor-col-resize hover:bg-blue-500/40"
+        className="absolute top-0 right-0 h-full w-2 cursor-col-resize hover:bg-primary/40"
       />
     </th>
   ))}
 
-  <th className="px-4 py-3 text-right w-32">
-    Actions
-  </th>
-
-  </tr>
-  </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-              {campaigns.length === 0 && (
+    <th className="px-4 py-3 text-right w-32">Actions</th>
+  </tr></thead>
+            <tbody className="divide-y divide-border/60">{campaigns.length === 0 && (
                 <tr>
-                  <td colSpan={13} className="px-4 py-16 text-center">
+                  <td colSpan={16} className="px-4 py-16 text-center">
                     <div className="flex flex-col items-center justify-center">
                       <div className="text-sm font-semibold text-foreground">
                         No campaigns found
@@ -312,21 +470,44 @@ const handleDelete = async (campaignId: string) => {
 
               {campaigns.map((campaign) => (
                 <tr
-    key={campaign._id}
-    className="
-      group
-      hover:bg-muted/40
-      transition-colors
-      duration-150
-    "
-  >
+                  key={campaign._id}
+                  className="
+                    group
+                    hover:bg-muted/40
+                    transition-colors
+                    duration-150
+                  "
+                >
+                  {hasPermission("campaign.delete") && (
+                    // ─── Row Checkbox (Individual Campaign Selection) ─────────────────────────────
+                    // Toggles this specific campaign's ID in the selectedCampaignIds Set.
+                    // Propagation is stopped so the row click handler is not triggered simultaneously.
+                    // ─────────────────────────────────────────────────────────────────────────────
+                    <td className="px-4 py-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedCampaignIds.has(campaign._id)}
+                        onChange={(e) => {
+                          const newSelected = new Set(selectedCampaignIds);
+                          if (e.target.checked) {
+                            newSelected.add(campaign._id);
+                          } else {
+                            newSelected.delete(campaign._id);
+                          }
+                          setSelectedCampaignIds(newSelected);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-4 h-4 rounded border-border bg-background text-primary focus:ring-primary/40 cursor-pointer"
+                      />
+                    </td>
+                  )}
 
-    {/* USER ID */}
+                  {/* USER ID */}
     <td
       style={{ width: columnWidths.createdByUserId }}
       className="px-4 py-3 whitespace-nowrap"
     >
-      <span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-xs font-medium text-gray-700 dark:text-gray-300">
+      <span className="inline-flex items-center px-2 py-1 rounded-md bg-panel text-xs font-medium text-text-secondary">
         {user?.userId || "—"}
       </span>
     </td>
@@ -341,7 +522,7 @@ const handleDelete = async (campaignId: string) => {
     {/* SENDER SERVER */}
     <td
       style={{ width: columnWidths.senderServerId }}
-      className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap"
+      className="px-4 py-3 text-xs text-text-secondary whitespace-nowrap"
     >
       {campaign.senderServerId || "—"}
     </td>
@@ -349,10 +530,10 @@ const handleDelete = async (campaignId: string) => {
     {/* CAMPAIGN */}
     <td
       style={{ width: columnWidths.campaignName,wordBreak: "break-word"  }}
-      className="px-4 py-3 font-medium text-gray-800 dark:text-gray-100 break-words"
+      className="px-4 py-3 font-medium text-foreground break-words"
     >
       <Link
-  href={`/campaigns/${encodeURIComponent(campaign.campaignName)}/send`}
+  href={`/campaigns/${encodeURIComponent(campaign.campaignName)}`}
   className="text-foreground font-semibold hover:text-primary hover:underline transition"
 >
   {campaign.campaignName}
@@ -397,7 +578,7 @@ const handleDelete = async (campaignId: string) => {
     </div>
 
     {campaign.kpi?.botRate > 5 && (
-      <div className="text-[11px] text-red-500 mt-1">
+      <div className="text-[11px] text-rose mt-1">
         {campaign.kpi?.botRate}% bots
       </div>
     )}
@@ -406,7 +587,7 @@ const handleDelete = async (campaignId: string) => {
     {/* CTR */}
     <td
       style={{ width: columnWidths.ctr }}
-      className="px-4 py-3 text-right font-medium text-green-600 dark:text-green-400"
+      className="px-4 py-3 text-right font-medium text-emerald"
     >
       {campaign.kpi?.ctr ?? 0}%
     </td>
@@ -427,7 +608,7 @@ const handleDelete = async (campaignId: string) => {
     {/* OPTOUTS */}
     <td
       style={{ width: columnWidths.optouts }}
-      className="px-4 py-3 text-right font-medium text-yellow-600 dark:text-yellow-400"
+      className="px-4 py-3 text-right font-medium text-amber"
     >
       {campaign.kpi?.optouts?.toLocaleString() ?? 0}
     </td>
@@ -435,7 +616,7 @@ const handleDelete = async (campaignId: string) => {
     {/* UNSUBS */}
     <td
       style={{ width: columnWidths.unsubs }}
-      className="px-4 py-3 text-right font-medium text-red-600 dark:text-red-400"
+      className="px-4 py-3 text-right font-medium text-rose"
     >
       {campaign.kpi?.unsubs?.toLocaleString() ?? 0}
     </td>
@@ -460,7 +641,7 @@ const handleDelete = async (campaignId: string) => {
       <>
         <div
           className={`font-semibold ${
-            hardRate > 2 ? "text-red-600" : "text-amber-500"
+            hardRate > 2 ? "text-rose" : "text-amber"
           }`}
         >
           {hardRate.toFixed(2)}%
@@ -476,7 +657,7 @@ const handleDelete = async (campaignId: string) => {
 
 <td
   style={{ width: columnWidths.complaints }}
-  className="px-4 py-3 text-right font-medium text-red-600"
+  className="px-4 py-3 text-right font-medium text-rose"
 >
   {campaign.kpi?.complaints?.toLocaleString() ?? 0}
 
@@ -501,35 +682,43 @@ const handleDelete = async (campaignId: string) => {
     <EyeIcon className="w-4 h-4 text-primary" />
   </button>
 
-  {/* COPY */}
-  <button
-    onClick={() => handleCopy(campaign._id)}
-    className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
-    title="Copy Campaign"
-  >
-    <DocumentDuplicateIcon className="w-4 h-4 text-purple-500" />
-  </button>
-
-  <button
-  onClick={() => handleDelete(campaign._id)}
-  className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
-  title="Delete Campaign"
->
-  <TrashIcon className="w-4 h-4 text-red-500" />
-</button>
-
-  {/* EDIT (ONLY WHEN PAUSED) */}
-  {campaign.status === "PAUSED" && (
-    <Link
-      href={`/campaigns/${encodeURIComponent(campaign.campaignName)}/send`}
+  {/* COPY (REQUIRES CREATE) */}
+  {hasPermission("campaign.create") && (
+    <button
+      onClick={() => handleCopy(campaign._id)}
       className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
+      title="Copy Campaign"
     >
-      <PencilSquareIcon className="w-4 h-4 text-blue-500" />
+      <DocumentDuplicateIcon className="w-4 h-4 text-violet" />
+    </button>
+  )}
+
+  {/* DELETE */}
+  {hasPermission("campaign.delete") && (
+    <button
+      onClick={() => handleDelete(campaign._id)}
+      className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
+      title="Delete Campaign"
+    >
+      <TrashIcon className="w-4 h-4 text-rose" />
+    </button>
+  )}
+
+  {/* EDIT (ONLY WHEN PAUSED OR DRAFT OR CREATED) */}
+  {(campaign.status === "PAUSED" || campaign.status === "DRAFT" || campaign.status === "CREATED") && hasPermission("campaign.edit") && (
+    <Link
+      href={`/campaigns/create?id=${campaign._id}`}
+      className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
+      title="Edit Campaign"
+    >
+      <PencilSquareIcon className="w-4 h-4 text-primary" />
     </Link>
   )}
 
-  {/* CONTROLS */}
-  <CampaignControls campaign={campaign} refresh={refresh} />
+  {/* CONTROLS (REQUIRES SEND) */}
+  {hasPermission("campaign.send") && (
+    <CampaignControls campaign={campaign} refresh={refresh} />
+  )}
 
 </div>
     </td>

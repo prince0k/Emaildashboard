@@ -1,7 +1,11 @@
 import Campaign from "../../models/Campaign.js";
-import axios from "axios";
 import SenderServer from "../../models/SenderServer.js";
 
+/**
+ * liveStatus.js
+ * FULLY TRANSACTIONAL — reads all status from MongoDB only.
+ * No sender filesystem status.json calls.
+ */
 export default async function liveStatus(req, res) {
   try {
     const { id, runtimeOfferId } = req.query;
@@ -35,9 +39,10 @@ export default async function liveStatus(req, res) {
     const sent = campaign.execution?.totalSent || 0;
     const delivered = campaign.execution?.delivered || 0;
     const failures = campaign.execution?.failures || 0;
+    const realtimeSuppressed = campaign.execution?.realtimeSuppressed || 0;
     const lastUpdate = campaign.execution?.lastStatusUpdate || null;
 
-const totalPlanned = campaign.sendConfig?.totalSend || 0;
+    const totalPlanned = campaign.sendConfig?.totalSend || 0;
 
     const progress =
       totalPlanned > 0
@@ -45,58 +50,15 @@ const totalPlanned = campaign.sendConfig?.totalSend || 0;
         : 0;
 
     /* =====================================================
-   FETCH LIVE STATUS FROM CAMPAIGN'S SENDER
+       RESOLVE SENDER NAME
     ===================================================== */
 
-    const senderDoc = await SenderServer.findOne({
-      _id: campaign.sender,
-      active: true,
-    }).lean();
+    const senderDoc = campaign.sender
+      ? await SenderServer.findById(campaign.sender).select("code name").lean()
+      : null;
 
-    if (!senderDoc) {
-      return res.json({
-        campaign: {
-          id: campaign._id,
-          name: campaign.campaignName,
-          runtimeOfferId: runtimeId,
-        },
-        status: campaign.status || "UNKNOWN",
-        sender: null,
-        live: {
-          sent,
-          delivered,
-          failures,
-          progress,
-          lastUpdate,
-        },
-      });
-    }
-
-    const baseUrl = senderDoc.baseUrl.replace(/\/$/, "");
-    const statusUrl = `${baseUrl}/internal/campaigns/${campaign.campaignName}/status.json`;
-
-    let senderStatus = campaign.status || "UNKNOWN";
-
-    try {
-      const response = await axios.get(statusUrl, {
-        timeout: 2000,
-        validateStatus: () => true,
-      });
-
-      if (response.status === 200 && response.data?.status) {
-        senderStatus = response.data.status;
-      }
-    } catch {
-      // ignore failure — fallback to DB
-    }
-    if (campaign.status !== senderStatus) {
-      await Campaign.updateOne(
-        { _id: campaign._id, status: { $ne: senderStatus } },
-        { $set: { status: senderStatus } }
-      );
-    }
     /* =====================================================
-       RESPONSE
+       RESPONSE — All data from MongoDB
     ===================================================== */
 
     return res.json({
@@ -106,13 +68,14 @@ const totalPlanned = campaign.sendConfig?.totalSend || 0;
         runtimeOfferId: runtimeId,
       },
 
-      status: senderStatus,
-      sender: senderDoc.code || senderDoc.name,
+      status: campaign.status || "UNKNOWN",
+      sender: senderDoc?.code || senderDoc?.name || null,
 
       live: {
         sent,
         delivered,
         failures,
+        realtimeSuppressed,
         progress,
         lastUpdate,
       }

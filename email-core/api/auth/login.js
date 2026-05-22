@@ -69,11 +69,13 @@ export default async function login(req, res) {
   }
 );
 
-    res.cookie("token", token, {
+    const cookieName = process.env.COOKIE_NAME || "token";
+    const cookiePath = process.env.COOKIE_PATH || "/";
+    res.cookie(cookieName, token, {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: "strict",
-  path: "/",
+  path: cookiePath,
 });
 
     return res.json({

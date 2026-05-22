@@ -1,6 +1,6 @@
 /**
  * createCampaign.js
- * FINAL PRODUCTION VERSION (TRANSACTION SAFE + DUPLICATE SAFE)
+ * FINAL PRODUCTION VERSION (SUPPORT UPDATES + DRAFTS)
  */
 
 import Offer from "../../models/Offer.js";
@@ -12,6 +12,7 @@ import { callSender } from "./helpers/senderBridge.js";
 import SenderServer from "../../models/SenderServer.js";
 import mongoose from "mongoose";
 import os from "os";
+import fs from "fs";
 
 function sanitize(str = "") {
   return String(str)
@@ -28,6 +29,7 @@ if (!DEFAULT_TRACKING_DOMAIN) {
 
 export default async function createCampaign(req, res) {
   try {
+    let { campaignId } = req.body;
     const {
       sender,
       campaignName,
@@ -36,10 +38,28 @@ export default async function createCampaign(req, res) {
       isp,
       segmentName,
       routes,
+      routeIds,
+      subjectIds,
+      fromIds,
       runtimeOfferId,
       trackingMode,
       trackingDomain,
       scheduledDate,
+      openTriggerCampaignId,
+      htmlOverride,
+      headerMode,
+      customHeaderBlock,
+      textEncoding,
+      htmlEncoding,
+      suppressionConfig,
+      // ===== EXTRA SEND SPEED & THROTTLE FIELDS =====
+      totalSend,
+      sendInSeconds,
+      sendInMinutes,
+      sendInHours,
+      seeds,
+      seedAfter,
+      seedMode,
     } = req.body;
 
   /* ================= PERMISSION CHECK ================= */
@@ -48,355 +68,263 @@ export default async function createCampaign(req, res) {
       return res.status(403).json({ error: "forbidden" });
     }
 
-    const senderDoc = await SenderServer.findOne({
+    const isDraft = req.body.draft === true || req.body.draft === "true" || req.body.isDraft === true || req.body.isDraft === "true";
+
+    /* ================= VALIDATION ================= */
+
+    if (!isDraft && (!sender || !offerId || !creativeId || !segmentName)) {
+      return res.status(400).json({ error: "validation_failed_required_fields_missing" });
+    }
+
+    const senderDoc = sender ? await SenderServer.findOne({
       _id: sender,
       active: true,
-    }).lean();
+    }).lean() : null;
 
-    if (!senderDoc) {
+    if (!isDraft && !senderDoc) {
       return res.status(400).json({
         error: "invalid_or_inactive_sender",
       });
     }
 
-    const senderCode = senderDoc.code || "SRV";
-    /* ================= VALIDATION ================= */
+    const senderCode = senderDoc?.code || "SRV";
 
-    if (!sender || !creativeId || !offerId || !segmentName) {
-      return res.status(400).json({ error: "missing_required_fields" });
+    const offer = offerId ? await Offer.findById(offerId).lean() : null;
+    if (!isDraft && (!offer || !offer.isActive || offer.isDeleted)) {
+      return res.status(404).json({ error: "offer_not_active" });
     }
 
-     if (routes !== undefined) {
-      if (!Array.isArray(routes)) {
-        return res.status(400).json({ error: "invalid_route_structure" });
-      }
+    // Resolve routeIds if provided
+    let resolvedRoutes = routes || [];
+    if (routeIds && Array.isArray(routeIds) && senderDoc) {
+      resolvedRoutes = senderDoc.routes
+        .filter(r => routeIds.includes(String(r._id)))
+        .map(r => ({
+          from_user: r.from_user,
+          domain: r.domain,
+          vmta: r.vmta
+        }));
+    }
 
-      for (const r of routes) {
-        if (!r || !r.from_user || !r.domain || !r.vmta) {
-          return res.status(400).json({ error: "invalid_route_structure" });
+    let cleanCampaignName = campaignName ? String(campaignName).trim() : "";
+
+    /* ================= DUP CHECK / IDEMPOTENCY LOCK ================= */
+    if (!campaignId && cleanCampaignName) {
+      const existingCampaign = await Campaign.findOne({ campaignName: cleanCampaignName });
+      if (existingCampaign) {
+        if (existingCampaign.status === "DRAFT" || existingCampaign.status === "CREATED") {
+          campaignId = existingCampaign._id.toString();
+        } else {
+          return res.status(400).json({
+            error: "campaign_name_already_exists",
+            message: "A campaign with this name already exists and is active/completed."
+          });
         }
       }
     }
 
-    let cleanCampaignName = campaignName
-      ? String(campaignName).trim()
-      : "";
     /* ================= SCHEDULING ================= */
-
     let scheduledAt = null;
-
     if (scheduledDate) {
       const selected = new Date(scheduledDate + "T00:00:00");
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-
-      if (selected < today) {
-        return res.status(400).json({
-          error: "scheduled_date_cannot_be_in_past",
-        });
+      if (selected < today && !isDraft) {
+        return res.status(400).json({ error: "scheduled_date_cannot_be_in_past" });
       }
-
       scheduledAt = selected;
     }
 
+    /* ================= RESOLVE CAMPAIGN NAME ================= */
+    let versionedCampaignName = cleanCampaignName;
+
+    if (!campaignId) {
+        // NEW CAMPAIGN
+        if (!cleanCampaignName && offer) {
+            cleanCampaignName = sanitize(
+              [
+                isp,
+                offer.offer,
+                offer.cid,
+                offer.sid,
+                Date.now(),
+                `by_${req.user.userId}`,
+                `srv_${senderCode}`
+              ]
+                .filter(Boolean)
+                .join("_")
+            );
+          }
+      
+          if (scheduledAt && offer) {
+            const yyyy = scheduledAt.getFullYear();
+            const mm = String(scheduledAt.getMonth() + 1).padStart(2, "0");
+            const dd = String(scheduledAt.getDate()).padStart(2, "0");
+            const dateStr = `${yyyy}${mm}${dd}`;
+            cleanCampaignName = sanitize(
+              [
+                isp,
+                offer.offer,
+                offer.cid,
+                offer.sid,
+                dateStr,
+                `by_${req.user.userId}`,
+                `srv_${senderCode}`
+              ]
+                .filter(Boolean)
+                .join("_")
+            );
+          }
+      
+          const baseCampaignName = cleanCampaignName || "Draft_" + Date.now();
+          const existing = await Campaign.find({
+            campaignName: new RegExp(`^${baseCampaignName}`)
+          }).select("campaignName");
     
-    /* ================= FETCH OFFER ================= */
-
-    const offer = await Offer.findById(offerId).lean();
-    console.log("DEBUG OFFER ID:", offerId);
-
-    if (!offer || !offer.isActive || offer.isDeleted) {
-      return res.status(404).json({ error: "offer_not_active" });
+          let version = 1;
+          if (existing.length > 0) {
+            const numbers = existing.map(c => {
+              const match = c.campaignName.match(/_v(\d+)$/);
+              return match ? parseInt(match[1]) : 1;
+            });
+            version = Math.max(...numbers) + 1;
+          }
+          versionedCampaignName = existing.length > 0 ? `${baseCampaignName}_v${version}` : baseCampaignName;
+    } else {
+        // UPDATE EXISTING - Use current name if not provided
+        const existingDoc = await Campaign.findById(campaignId);
+        if (existingDoc && !cleanCampaignName) {
+            versionedCampaignName = existingDoc.campaignName;
+        }
     }
-
-
-
-    if (!cleanCampaignName) {
-      cleanCampaignName = sanitize(
-        [
-          isp,
-          offer.offer,
-          offer.cid,
-          offer.sid,
-          Date.now(),
-          `by_${req.user.userId}`,
-          `srv_${senderCode}`
-        ]
-          .filter(Boolean)
-          .join("_")
-      );
-    }
-
-    if (!offer.sid || !offer.offer || !offer.md5FileName) {
-      return res.status(400).json({
-        error: "offer_incomplete_configuration",
-      });
-    }
-
-    
-
-    
-    if (scheduledAt) {
-  const yyyy = scheduledAt.getFullYear();
-  const mm = String(scheduledAt.getMonth() + 1).padStart(2, "0");
-  const dd = String(scheduledAt.getDate()).padStart(2, "0");
-
-  const dateStr = `${yyyy}${mm}${dd}`;
-  const shortUserId = req.user.userId;
-
-  cleanCampaignName = sanitize(
-    [
-      isp,
-      offer.offer,
-      offer.cid,
-      offer.sid,
-      dateStr,
-      `by_${shortUserId}`,
-      `srv_${senderCode}`
-    ]
-      .filter(Boolean)
-      .join("_")
-  );
-}
-
-    /* ================= DUPLICATE CAMPAIGN CHECK ================= */
-
-    const baseCampaignName = cleanCampaignName;
-
-    const existing = await Campaign.find({
-      campaignName: new RegExp(`^${baseCampaignName}`)
-    }).select("campaignName");
-
-    let version = 1;
-
-    if (existing.length > 0) {
-      const numbers = existing
-        .map(c => {
-          const match = c.campaignName.match(/_v(\d+)$/);
-          return match ? parseInt(match[1]) : 1;
-        });
-
-      version = Math.max(...numbers) + 1;
-    }
-
-    cleanCampaignName = `${baseCampaignName}_v${version}`;
-
-    /* ================= FETCH CREATIVE ================= */
-
-    const creative = await Creative.findById(creativeId).lean();
-
-    if (!creative) {
-      return res.status(404).json({ error: "creative_not_found" });
-    }
-
-    const creativeHtml =
-      creative.html ||
-      creative.htmlContent ||
-      creative.body ||
-      "";
-
-    if (!creativeHtml.trim()) {
-      return res.status(400).json({
-        error: "creative_html_required",
-      });
-    }
-
 
     /* ================= BUILD RUNTIME OFFER ID ================= */
 
-    const finalOfferId = buildRuntimeOfferId({
-      server: senderCode,
-      sid: offer.sid,
-      cid: offer.cid,
-      user: req.user.userId,
-      override: runtimeOfferId
-    });
-
-    if (!finalOfferId || finalOfferId.length < 5) {
-      return res.status(400).json({
-        error: "runtime_offer_id_invalid",
-      });
+    let finalOfferId = runtimeOfferId;
+    if (offer && !finalOfferId) {
+      try {
+        finalOfferId = buildRuntimeOfferId({
+          server: senderCode,
+          sid: offer.sid,
+          cid: offer.cid,
+          campaignName: versionedCampaignName,
+          override: runtimeOfferId
+        });
+      } catch (e) {
+        if (!isDraft) throw e;
+      }
     }
 
-    /* ================= RUNTIME OFFER ID CONFLICT CHECK ================= */
-
-    const baseOfferId = finalOfferId;
-
-    const existingDeploys = await Deploy.find({
-      offer_id: new RegExp(`^${baseOfferId}`)
-    }).select("offer_id");
-
-    let offerVersion = 1;
-
-    if (existingDeploys.length > 0) {
-      const numbers = existingDeploys.map(d => {
-        const match = d.offer_id.match(/_(\d+)$/);
-        return match ? parseInt(match[1]) : 1;
-      });
-
-      offerVersion = Math.max(...numbers) + 1;
-    }
-
-    const versionedOfferId = `${baseOfferId}_${offerVersion}`;
+    const versionedOfferId = finalOfferId || "draft_" + Date.now();
 
     /* ================= TRACKING ================= */
 
     const allowedTrackingModes = ["from", "domain"];
     const requestedTrackingMode = String(trackingMode || "from").toLowerCase();
-
-    const finalTrackingMode = allowedTrackingModes.includes(requestedTrackingMode)
-      ? requestedTrackingMode
-      : "from";
-
+    const finalTrackingMode = allowedTrackingModes.includes(requestedTrackingMode) ? requestedTrackingMode : "from";
     let finalTrackingDomain = null;
 
     if (finalTrackingMode === "domain") {
-      const domainToUse =
-        (trackingDomain && trackingDomain.trim()) ||
-        DEFAULT_TRACKING_DOMAIN;
-
-      if (!domainToUse) {
-        return res.status(400).json({
-          error: "tracking_domain_required_for_domain_mode",
-        });
+      finalTrackingDomain = (trackingDomain && trackingDomain.trim()) || DEFAULT_TRACKING_DOMAIN;
+      if (!isDraft && !finalTrackingDomain) {
+        return res.status(400).json({ error: "tracking_domain_required_for_domain_mode" });
       }
-
-      finalTrackingDomain = domainToUse.trim();
     }
 
-    
+    /* ================= PERSIST TO DB ================= */
 
-/* ================= CREATE CAMPAIGN FILES ON SENDER ================= */
-
-    const senderPayload = {
-      campaignName: cleanCampaignName,
-      creativeName: creative._id.toString(),
-      offerId: versionedOfferId,
-      creativeHtml,
-      dba: senderDoc?.dba?.trim() || "",
-      createOnly: true
-    };
-
-    console.log("🚀 Calling Sender...");
-    console.log("➡️ Sender ID:", sender);
-    console.log("➡️ Endpoint:", "createCampaignFiles.php");
-    console.log("➡️ Payload:", JSON.stringify(senderPayload, null, 2));
-    
-
-    let senderResponse;
-    const senderStart = Date.now();
-
-    try {
-      senderResponse = await callSender(
-        sender,
-        "createCampaignFiles.php",
-        senderPayload
-      );
-
-      console.log("✅ Sender Raw Response:", senderResponse);
-      console.log(`⏱ Sender execution time: ${Date.now() - senderStart} ms`);
-    } catch (senderErr) {
-      console.error("🔥 Sender Call Exception FULL:", senderErr);
-console.error("🔥 Code:", senderErr.code);
-console.error("🔥 Message:", senderErr.message);
-console.error("🔥 Stack:", senderErr.stack);
-
-      return res.status(502).json({
-        error: "sender_call_exception",
-        message: senderErr.message,
-      });
-    }
-
-    if (
-      !senderResponse ||
-      senderResponse.error ||
-      senderResponse.success === false
-    ) {
-      console.error("❌ Sender create failed:");
-      console.error("Response:", senderResponse);
-
-      return res.status(502).json({
-        error: "sender_create_failed",
-        details: senderResponse,
-      });
-    }
-
-/* ================= TRANSACTION ================= */
-
-  const session = await mongoose.startSession();
-
-  try {
-    session.startTransaction();
-
-    await Deploy.updateOne(
-      { offer_id: versionedOfferId, cid: offer.cid },
-      {
-        $set: {
-          sid: offer.sid.toLowerCase(),
-          sponsor: offer.sponsor,
-          offer: offer.offer,
-          redirectLinks: offer.redirectLinks || [],
-          optoutLink: offer.optoutLink,
-          md5FileName: offer.md5FileName,
-          status: "DEPLOYED",
-          deployedAt: new Date(),
-        },
-      },
-      { upsert: true, session }
-    );
-
-    await Campaign.create(
-      [{
-        campaignName: cleanCampaignName,
-        sender,
-        routes: Array.isArray(routes) ? routes : [],
-        creativeId,
-        offerId,
+    const updatePayload = {
+        campaignName: versionedCampaignName,
+        sender: sender || null,
+        creativeId: creativeId || null,
+        offerId: offerId || null,
         runtimeOfferId: versionedOfferId,
         isp,
         segmentName,
         scheduledAt,
         trackingMode: finalTrackingMode,
         trackingDomain: finalTrackingDomain,
-        status: "CREATED",
-        createdAt: new Date(),
-        createdBy: req.user._id,
-        
-      }],
-      { session }
-    );
+        status: isDraft ? "DRAFT" : "CREATED",
+        openTriggerCampaignId: openTriggerCampaignId || null,
+        htmlOverride: htmlOverride || null,
+        routes: resolvedRoutes,
+        sendConfig: {
+          subjectIds: Array.isArray(subjectIds) ? subjectIds : [],
+          fromIds: Array.isArray(fromIds) ? fromIds : [],
+          headerBlockMode: headerMode || "default",
+          customHeaderBlock: customHeaderBlock || "",
+          textEncoding: textEncoding || "base64",
+          htmlEncoding: htmlEncoding || "base64",
+          createdBy: req.user.mongoId,
+          mode: "LIVE",
+          totalSend: typeof totalSend !== "undefined" && totalSend !== null ? Number(totalSend) : undefined,
+          sendInSeconds: typeof sendInSeconds !== "undefined" && sendInSeconds !== null ? Number(sendInSeconds) : undefined,
+          sendInMinutes: typeof sendInMinutes !== "undefined" && sendInMinutes !== null ? Number(sendInMinutes) : undefined,
+          sendInHours: typeof sendInHours !== "undefined" && sendInHours !== null ? Number(sendInHours) : undefined,
+          seeds: Array.isArray(seeds) ? seeds : (typeof seeds === "string" ? seeds.split(",").map(x => x.trim()).filter(Boolean) : []),
+          seedAfter: typeof seedAfter !== "undefined" && seedAfter !== null ? Number(seedAfter) : 0,
+          seedMode: ["round", "random"].includes(seedMode) ? seedMode : "round",
+        }
+    };
 
-    await session.commitTransaction();
-
-  } catch (err) {
-    await session.abortTransaction();
-
-    console.error("❌ DB TRANSACTION FAILED:", err);
-
-    if (err.code === 11000) {
-      return res.status(400).json({
-        error: "campaign_already_exists",
-      });
+    // Persist suppression config from Step 3
+    if (suppressionConfig && typeof suppressionConfig === "object") {
+      updatePayload.suppressionConfig = {
+        queueDomain: suppressionConfig.queueDomain || null,
+        skipUnsub: suppressionConfig.skipUnsub === true,
+        inclusionSegments: Array.isArray(suppressionConfig.inclusionSegments)
+          ? suppressionConfig.inclusionSegments
+          : [],
+        exclusionSegments: Array.isArray(suppressionConfig.exclusionSegments)
+          ? suppressionConfig.exclusionSegments
+          : [],
+      };
     }
 
-    return res.status(500).json({
-      error: "campaign_creation_failed",
-      message: err.message,
+    if (!isDraft && offer) {
+        await Deploy.updateOne(
+          { offer_id: versionedOfferId, cid: offer.cid },
+          {
+            $set: {
+              sid: offer.sid.toLowerCase(),
+              sponsor: offer.sponsor,
+              offer: offer.offer,
+              redirectLinks: offer.redirectLinks || [],
+              optoutLink: offer.optoutLink,
+              md5FileName: offer.md5FileName,
+              status: "DEPLOYED",
+              deployedAt: new Date(),
+            },
+          },
+          { upsert: true }
+        );
+    }
+
+    const action = campaignId ? "update" : "create";
+    let resultCampaign;
+    if (campaignId) {
+        resultCampaign = await Campaign.findByIdAndUpdate(
+            campaignId,
+            { $set: updatePayload },
+            { new: true }
+        );
+    } else {
+        updatePayload.createdAt = new Date();
+        updatePayload.createdBy = req.user.mongoId;
+        resultCampaign = await Campaign.create(updatePayload);
+    }
+
+    console.log("[CAMPAIGN OBSERVABILITY] Action: %s, CampaignId: %s, UserId: %s, WizardStep: %s, RequestSource: %s", action, resultCampaign._id, req.user.userId || req.user.mongoId, req.body.step || "unknown", req.body.requestSource || "save/suppression");
+
+    return res.json({
+        status: isDraft ? "draft_saved" : "created",
+        campaign: resultCampaign.campaignName,
+        campaignId: resultCampaign._id,
+        offerId: versionedOfferId,
     });
-
-  } finally {
-    session.endSession();
-  }
-
-  return res.json({
-    status: "created",
-    campaign: cleanCampaignName,
-    offerId: versionedOfferId,
-  });
 
   } catch (err) {
     console.error("CREATE + DEPLOY ERROR:", err);
-
     return res.status(500).json({
       error: "campaign_creation_failed",
       message: err.message,

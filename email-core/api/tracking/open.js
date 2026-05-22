@@ -144,16 +144,37 @@ export default async function trackOpen(req, res) {
           );
         }
 
-        await Promise.allSettled(promises);
+        // 🟢 TRIGGER SYSTEM
+        if (link.campaignId || link.campaignName) {
+          const { processCampaignTrigger } = await import("../../services/triggerService.js");
+          const Campaign = (await import("../../models/Campaign.js")).default;
+          
+          const campaignDoc = await Campaign.findOne({
+            $or: [
+              { _id: isValidObjectId(link.campaignId) ? link.campaignId : null },
+              { campaignName: link.campaignId },
+              { campaignName: link.campaignName }
+            ].filter(Boolean)
+          }).lean();
 
+          if (campaignDoc?.openTriggerCampaignId) {
+            await processCampaignTrigger(campaignDoc, email);
+          }
+        }
+
+        await Promise.allSettled(promises);
       } catch (err) {
         console.error("OPEN BG ERROR:", err);
       }
     });
-
   } catch (err) {
     console.error("OPEN ERROR:", err);
   }
+}
+
+function isValidObjectId(id) {
+  if (!id) return false;
+  return /^[0-9a-fA-F]{24}$/.test(id);
 }
 
 /* =========================

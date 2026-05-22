@@ -20,23 +20,25 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = req.cookies.get("token")?.value;
+  const cookieName = process.env.COOKIE_NAME || process.env.NEXT_PUBLIC_COOKIE_NAME || "token";
+  const token = req.cookies.get(cookieName)?.value;
+  const basePath = req.nextUrl.basePath || "";
 
   /* =========================
      LOGIN PAGE LOGIC
   ========================== */
-if (pathname === "/login") {
-  if (token) {
-    return NextResponse.redirect(new URL("/", req.url));
+  if (pathname === "/login") {
+    if (token) {
+      return NextResponse.redirect(new URL(basePath + "/", req.url));
+    }
+    return NextResponse.next();
   }
-  return NextResponse.next();
-}
 
   /* =========================
      PROTECTED ROUTES
   ========================== */
   if (!token) {
-    const loginUrl = new URL("/login", req.url);
+    const loginUrl = new URL(basePath + "/login", req.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }

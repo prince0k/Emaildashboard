@@ -67,14 +67,14 @@ export default function PmtaControlPanel({ server }: { server: any }) {
       </div>
 
       {/* ✅ SERVER INFO */}
-      <div className="p-3 border border-border rounded-lg bg-muted/30">
+      <div className="p-3 border border-border rounded-lg bg-panel/30">
         <p className="text-sm font-medium">{server?.name}</p>
         <p className="text-xs text-muted-foreground">{server?.code}</p>
       </div>
 
       {/* ✅ RESULT */}
       {result && (
-        <div className="bg-black/80 text-green-400 p-4 text-xs rounded-lg overflow-auto border border-border">
+        <div className="bg-neutral-950/80 text-emerald p-4 text-xs rounded-lg overflow-auto border border-border">
           <pre>{JSON.stringify(result, null, 2)}</pre>
         </div>
       )}
@@ -101,7 +101,7 @@ export default function PmtaControlPanel({ server }: { server: any }) {
                   setAction(item);
                   setOpen(false);
                 }}
-                className="px-3 py-2 text-sm cursor-pointer hover:bg-primary hover:text-white transition"
+                className="px-3 py-2 text-sm cursor-pointer hover:bg-primary hover:text-primary-foreground transition"
               >
                 {item}
               </div>

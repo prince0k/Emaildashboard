@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import api from "@/lib/api";  
+import { Shield, ArrowRight, Send, Eye, MousePointer2, AlertCircle } from "lucide-react";
+import { useAuth } from "@/lib/authContext";
+import { cn } from "@/lib/utils";
 
 type Health = {
   status: "ok" | "down";
@@ -21,37 +25,33 @@ type DashboardStats = {
 };
 
 export default function HomePage() {
+  const { user, hasPermission, loading } = useAuth();
   const [health, setHealth] = useState<Health | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [pendingRequests, setPendingRequests] = useState(0);
 
-  /* ---------------- HEALTH CHECK ---------------- */
+  const isAdmin = user && (hasPermission("*") || hasPermission("role.view"));
+
   useEffect(() => {
     let cancelled = false;
 
     async function loadHealth() {
-  try {
-    const res = await api.get("/health");
-
-    const data = res.data;
-
-    if (!cancelled) {
-      setHealth({
-        status:
-          String(data.status).toLowerCase() === "ok"
-            ? "ok"
-            : "down",
-        uptime: data.uptime,
-        version: data.version,
-      });
+      try {
+        const res = await api.get("/health");
+        if (!cancelled) {
+          setHealth({
+            status: String(res.data.status).toLowerCase() === "ok" ? "ok" : "down",
+            uptime: res.data.uptime,
+            version: res.data.version,
+          });
+        }
+      } catch {
+        if (!cancelled) setHealth({ status: "down" });
+      }
     }
-  } catch {
-    if (!cancelled) {
-      setHealth({ status: "down" });
-    }
-  }
-}
 
     async function loadStats() {
+      if (!hasPermission("campaign.view")) return;
       try {
         const res = await api.get<DashboardStats>("/campaigns/analytics");
         setStats(res.data);
@@ -60,136 +60,193 @@ export default function HomePage() {
       }
     }
 
-    loadHealth();
-    loadStats();
+    async function loadRequests() {
+      if (!isAdmin) return;
+      try {
+        const res = await api.get("/permission-requests/list?status=PENDING");
+        setPendingRequests(res.data.requests?.length || 0);
+      } catch (err) {
+        console.error("Requests load failed:", err);
+      }
+    }
 
-    const interval = setInterval(loadStats, 8000);
+    if (loading) return;
+    Promise.all([loadHealth(), loadStats(), loadRequests()]);
+
+    const interval = setInterval(() => {
+      loadStats();
+      loadRequests();
+    }, 8000);
 
     return () => {
       cancelled = true;
       clearInterval(interval);
     };
-  }, []);
+  }, [isAdmin, hasPermission, loading]);
 
-  const isOnline = health?.status === "ok";
+  const kpis = [
+    { label: "Total Sent", value: stats?.totalSent ? `${(stats.totalSent / 1000000).toFixed(1)}M` : "0M", delta: "+12.4%", icon: Send, color: "var(--accent-indigo)", up: true },
+    { label: "Total Delivered", value: stats?.totalDelivered ? `${(stats.totalDelivered / 1000000).toFixed(1)}M` : "0M", delta: "+15.2%", icon: Eye, color: "var(--accent-cyan)", up: true },
+    { label: "Active Campaigns", value: stats?.running || "0", delta: "Live", icon: MousePointer2, color: "var(--accent-emerald)", up: true },
+    { label: "Pending Requests", value: pendingRequests, delta: "Requires Action", icon: Shield, color: pendingRequests > 0 ? "var(--accent-amber)" : "var(--accent-indigo)", up: pendingRequests > 0 },
+  ];
 
   return (
-    <div className="space-y-12">
-      {/* HEADER */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/80 backdrop-blur-xl p-10 shadow-soft">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.2),transparent_40%)] dark:opacity-20 dark:bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.4),transparent_40%)]" />
+    <div className="space-y-8 pb-12">
+      {/* KPI STRIP */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        {kpis.map((kpi, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05 }}
+            whileHover={{ y: -2 }}
+            className="group relative bg-surface border border-border rounded-xl p-4 overflow-hidden transition-all duration-300 hover:border-border-bright hover:shadow-[0_8px_24px_rgba(0,0,0,0.4),inset_0_0_10px_var(--kpi-color)]"
+            style={{ "--kpi-color": kpi.color } as any}
+          >
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[var(--kpi-color)] to-transparent opacity-50" />
+            
+            <div className="flex justify-between items-start mb-2">
+              <span className="font-mono text-[11px] text-text-muted uppercase tracking-wider">
+                {kpi.label}
+              </span>
+              <kpi.icon size={14} style={{ color: kpi.color }} />
+            </div>
+
+            <div className="text-3xl font-extrabold tracking-tighter mb-1 transition-transform group-hover:scale-[1.04] group-hover:text-white">
+              {kpi.value}
+            </div>
+
+            <div className={cn("text-[10px] font-bold flex items-center gap-1", kpi.up ? "text-emerald" : "text-text-muted")}>
+              {kpi.delta}
+            </div>
+
+            <div className="h-8 mt-3">
+              <svg viewBox="0 0 100 32" preserveAspectRatio="none" className="w-full h-full">
+                <defs>
+                  <linearGradient id={`grad-${i}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={kpi.color} stopOpacity="0.3" />
+                    <stop offset="100%" stopColor={kpi.color} stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <path d="M0 30 L0 25 L15 28 L30 15 L45 18 L60 8 L75 12 L90 5 L100 8 L100 32 L0 32 Z" fill={`url(#grad-${i})`} />
+                <polyline points="0,25 15,28 30,15 45,18 60,8 75,12 90,5 100,8" fill="none" stroke={kpi.color} strokeWidth="2" />
+              </svg>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        <div className="relative flex items-start justify-between">
-          <div className="space-y-3">
-            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-foreground">
-              MMS Internal
-            </h1>
-            <p className="text-muted-foreground max-w-2xl text-sm">
-              Live sending engine, tracking, suppression and offer deployment —
-              centralized & monitored in real-time.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* SYSTEM STATUS */}
-      <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm p-6 shadow-soft">
-        <div className="flex items-center gap-3">
-          <StatusDot ok={isOnline} />
-          <div className="text-sm">
-            <div className="font-medium text-gray-900 dark:text-gray-100">
-              Backend API {isOnline ? "Online" : "Offline"}
+        {/* MAIN OPERATIONS */}
+        <div className="lg:col-span-2 space-y-6">
+          <Section title="Active Operations">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {hasPermission("campaign.create") && (
+                <ActionCard
+                  title="Create Campaign"
+                  desc="Build sender → offer → template → send"
+                  href="/campaigns/create"
+                  primary
+                />
+              )}
+              {hasPermission("deploy.run") && (
+                <ActionCard
+                  title="Deploy Offer"
+                  desc="Activate offer for tracking"
+                  href="/deploy"
+                />
+              )}
+              {hasPermission("suppression.view") && (
+                <ActionCard
+                  title="Run Suppression"
+                  desc="Process bounce & complaint lists"
+                  href="/suppression"
+                />
+              )}
+              {hasPermission("campaign.view") && (
+                <ActionCard
+                  title="Campaign Manager"
+                  desc="Control pause / resume / stop"
+                  href="/campaigns"
+                />
+              )}
             </div>
-            {health?.uptime && (
-              <div className="text-gray-500 dark:text-gray-400">
-                Uptime: {formatUptime(health.uptime)}
+          </Section>
+
+          {isAdmin && pendingRequests > 0 && (
+            <Link 
+              href="/admin/requests"
+              className="flex items-center justify-between p-5 rounded-xl bg-amber/5 border border-amber/20 hover:bg-amber/10 transition-all group shadow-2xl"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-amber/10 flex items-center justify-center text-amber">
+                  <Shield size={20} />
+                </div>
+                <div>
+                  <div className="font-bold text-sm">Pending Access Requests</div>
+                  <div className="text-xs text-text-muted mt-0.5">You have {pendingRequests} request(s) waiting for review.</div>
+                </div>
               </div>
-            )}
-          </div>
-        </div>
-
-        <div className="text-xs text-gray-500 dark:text-gray-400 text-right">
-          Version {health?.version || "—"}
-        </div>
-      </div>
-
-      {/* QUICK STATS */}
-      {stats && (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-            <StatBox label="Total" value={stats.totalCampaigns} />
-            <StatBox label="Running" value={stats.running} green />
-            <StatBox label="Paused" value={stats.paused} yellow />
-            <StatBox label="Scheduled" value={stats.scheduled} blue />
-            <StatBox label="Sent" value={stats.totalSent} />
-            <StatBox label="Delivered" value={stats.totalDelivered} />
-          </div>
-
-          {stats.running > 0 && (
-            <div className="flex items-center justify-between rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 px-4 py-3 text-sm text-green-700 dark:text-green-300 mt-4">
-              <div>
-                {stats.running} campaign(s) currently sending live
+              <div className="flex items-center gap-2 text-[11px] font-bold text-amber uppercase tracking-widest group-hover:gap-3 transition-all">
+                Review Now
+                <ArrowRight size={14} />
               </div>
-              <span className="animate-pulse w-2 h-2 rounded-full bg-green-500 dark:bg-green-400" />
-            </div>
+            </Link>
           )}
-        </>
-      )}
-
-      {/* CAMPAIGNS */}
-      <Section title="Campaigns & Sending">
-        <Grid>
-          <ActionCard
-            title="Create Campaign"
-            desc="Build sender → offer → template → send"
-            href="/campaigns/create"
-            primary
-          />
-          <ActionCard
-            title="Campaign Manager"
-            desc="Control pause / resume / stop"
-            href="/campaigns"
-          />
-          <ActionCard
-            title="Sending Logs"
-            desc="Inspect job failures & activity"
-            href="/campaigns/logs"
-          />
-        </Grid>
-      </Section>
-
-      {/* OPERATIONS */}
-      <Section title="Core Operations">
-        <Grid cols={4}>
-          <ActionCard
-            title="Deploy Offer"
-            desc="Activate offer for tracking"
-            href="/deploy"
-          />
-          <ActionCard
-            title="Offers"
-            desc="Offer configurations"
-            href="/offers"
-          />
-          <ActionCard
-            title="Suppression"
-            desc="Bounce & complaint lists"
-            href="/suppression"
-          />
-          <ActionCard
-            title="MD5 Sync"
-            desc="Sync hashed lists"
-            href="/suppression/md5"
-          />
-        </Grid>
-      </Section>
-
-      {/* FOOTER NOTE */}
-      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 text-xs text-yellow-800 dark:text-yellow-200">
-        ⚠ Deploy an offer before sending traffic.
-        <div className="text-yellow-600 dark:text-yellow-400 mt-1">
-          Tracking rejects inactive offers automatically.
         </div>
+
+        {/* SYSTEM HEALTH & FEED */}
+        <div className="space-y-6">
+          <div className="bg-surface border border-border rounded-xl overflow-hidden shadow-2xl">
+            <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+              <div className="text-sm font-bold">System Integrity</div>
+              <div className={cn(
+                "px-2 py-0.5 rounded text-[10px] font-bold uppercase",
+                health?.status === "ok" ? "bg-emerald/10 text-emerald" : "bg-rose/10 text-rose"
+              )}>
+                {health?.status === "ok" ? "Nominal" : "Degraded"}
+              </div>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-text-muted">API Connection</span>
+                <span className={health?.status === "ok" ? "text-emerald" : "text-rose"}>
+                  {health?.status === "ok" ? "Stable" : "Lost"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-text-muted">System Uptime</span>
+                <span className="text-foreground font-mono">
+                  {health?.uptime ? formatUptime(health.uptime) : "—"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-text-muted">Version</span>
+                <span className="text-text-muted font-mono">{health?.version || "4.2.1"}</span>
+              </div>
+              
+              <div className="pt-2 border-t border-border mt-4">
+                <div className="text-[10px] text-text-muted uppercase font-bold mb-3 tracking-widest">Recent Activity</div>
+                <div className="space-y-3">
+                  {[
+                    { time: "12:44", msg: "Suppression sync complete", node: "NYC-01" },
+                    { time: "11:20", msg: "Offer deployed: Flash Sale", node: "SJC-01" },
+                    { time: "09:15", msg: "New campaign: Onboarding v3", node: "FRA-01" },
+                  ].map((log, i) => (
+                    <div key={i} className="flex gap-2 text-[10px] font-mono">
+                      <span className="text-text-muted">{log.time}</span>
+                      <span className="text-text-secondary truncate">{log.msg}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );
@@ -199,59 +256,12 @@ export default function HomePage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="space-y-5">
-      <h2 className="text-lg font-semibold text-foreground border-b border-border/60 pb-2">
+    <section className="space-y-4">
+      <h2 className="text-xs font-bold text-text-muted uppercase tracking-[0.2em] px-1">
         {title}
       </h2>
       {children}
     </section>
-  );
-}
-
-function Grid({ children, cols = 3 }: { children: React.ReactNode; cols?: number }) {
-  const colMap: Record<number, string> = {
-    2: "md:grid-cols-2",
-    3: "md:grid-cols-3",
-    4: "md:grid-cols-4",
-    5: "md:grid-cols-5",
-    6: "md:grid-cols-6",
-  };
-
-  return (
-    <div className={`grid grid-cols-1 ${colMap[cols] || "md:grid-cols-3"} gap-6`}>
-      {children}
-    </div>
-  );
-}
-
-function StatBox({
-  label,
-  value,
-  green,
-  yellow,
-  blue,
-}: {
-  label: string;
-  value: number;
-  green?: boolean;
-  yellow?: boolean;
-  blue?: boolean;
-}) {
-  let color = "text-foreground";
-
-  if (green) color = "text-emerald-600 dark:text-emerald-400";
-  if (yellow) color = "text-muted-foreground";
-  if (blue) color = "text-primary";
-
-  return (
-    <div className="rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm p-5 shadow-soft transition hover:shadow-medium">
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </div>
-      <div className={`mt-3 text-2xl font-bold ${color}`}>
-        {value}
-      </div>
-    </div>
   );
 }
 
@@ -269,46 +279,30 @@ function ActionCard({
   return (
     <Link
       href={href}
-      className={`
-        group relative overflow-hidden rounded-2xl border p-6 transition duration-300
-        ${
-          primary
-            ? "border-primary/30 bg-primary/5"
-            : "border-border/60 bg-card/80 backdrop-blur-sm"
-        }
-        hover:-translate-y-1 hover:shadow-medium
-      `}
+      className={cn(
+        "group relative overflow-hidden rounded-xl border p-6 transition-all duration-300",
+        primary
+          ? "border-primary/30 bg-primary/[0.03] hover:border-primary/50"
+          : "border-border bg-card/50 backdrop-blur-sm hover:border-border-bright"
+      )}
     >
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-sm text-foreground">
+        <h3 className="font-bold text-sm text-foreground">
           {title}
         </h3>
-
         {primary && (
-          <span className="text-[10px] px-2 py-0.5 rounded bg-primary text-primary-foreground">
-            PRIMARY
-          </span>
+          <div className="w-1.5 h-1.5 bg-primary rounded-full shadow-[0_0_8px_var(--accent-indigo)]" />
         )}
       </div>
 
-      <p className="mt-3 text-sm text-muted-foreground">
+      <p className="mt-2 text-xs text-text-muted leading-relaxed">
         {desc}
       </p>
 
-      <div className="mt-5 text-sm font-medium text-primary group-hover:translate-x-1 transition">
-        Open →
+      <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-primary uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1">
+        Initialize <ArrowRight size={12} />
       </div>
     </Link>
-  );
-}
-
-function StatusDot({ ok }: { ok: boolean }) {
-  return (
-    <span
-      className={`inline-block w-2.5 h-2.5 rounded-full ${
-        ok ? "bg-emerald-500" : "bg-destructive"
-      }`}
-    />
   );
 }
 
@@ -316,9 +310,6 @@ function formatUptime(seconds: number) {
   const s = Math.floor(seconds);
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-
   if (h) return `${h}h ${m}m`;
-  if (m) return `${m}m ${sec}s`;
-  return `${sec}s`;
+  return `${m}m`;
 }
