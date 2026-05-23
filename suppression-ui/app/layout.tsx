@@ -47,6 +47,19 @@ export default function RootLayout({
                     document.documentElement.style.colorScheme = 'light';
                   }
                 } catch (e) {}
+
+                try {
+                  var basePath = "${process.env.NEXT_PUBLIC_BASE_PATH || ""}";
+                  if (basePath && window.fetch) {
+                    var originalFetch = window.fetch;
+                    window.fetch = function(input, init) {
+                      if (typeof input === "string" && input.startsWith("/") && !input.startsWith(basePath)) {
+                        input = basePath + input;
+                      }
+                      return originalFetch(input, init);
+                    };
+                  }
+                } catch (e) {}
               })();
             `,
           }}
