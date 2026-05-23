@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, AlertCircle } from "lucide-react";
 
-const API = process.env.NEXT_PUBLIC_API_URL;
+const API = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 export default function AnalyticsPanel() {
   const [stats, setStats] = useState<any>(null);

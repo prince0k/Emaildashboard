@@ -70,7 +70,7 @@ export default function FromLineManager({ offerId }) {
       setBulkResult(null);
 
       const res = await fetch(
-  `${process.env.NEXT_PUBLIC_API_URL}/api/offers/from-lines/bulk-create`,
+        `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/offers/from-lines/bulk-create`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

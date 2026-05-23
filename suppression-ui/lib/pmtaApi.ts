@@ -1,4 +1,4 @@
-const API = process.env.NEXT_PUBLIC_API_URL || "";
+const API = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 export async function getPmtaServers() {
   const res = await fetch(`${API}/api/pmta/servers`, {
