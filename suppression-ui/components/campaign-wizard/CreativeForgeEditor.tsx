@@ -34,7 +34,7 @@ export default function CreativeForgeEditor({
   };
 
   return (
-    <div className={`${isFullscreen ? "h-screen flex flex-col overflow-hidden" : "space-y-4"}`}>
+    <div className={`${isFullscreen ? "fixed inset-0 z-[100] bg-background p-0 rounded-none h-screen flex flex-col overflow-hidden" : "space-y-4"}`}>
       <div className={`flex items-center justify-between px-6 ${isFullscreen ? "py-4 bg-secondary/5 border-b border-border/20" : ""}`}>
         <label className="text-[13px] font-bold text-muted-foreground uppercase tracking-[0.15em]">Full Width Creative Source Power Editor</label>
         <div className="flex items-center gap-4">
