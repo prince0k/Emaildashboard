@@ -73,6 +73,24 @@ module.exports = {
       }
     },
     {
+      name: "v2-redis-worker",
+      script: "./redis_worker.js",
+      cwd: "./email-core",
+      watch: false,
+      env: {
+        NODE_ENV: "production"
+      }
+    },
+    {
+      name: "v2-tracking-worker",
+      script: "./api/tracking/worker.js",
+      cwd: "./email-core",
+      watch: false,
+      env: {
+        NODE_ENV: "production"
+      }
+    },
+    {
       name: "v2-frontend",
       script: "npm",
       args: "run start",

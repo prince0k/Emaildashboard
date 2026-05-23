@@ -5,8 +5,10 @@ import ClickLog from "../models/ClickLog.js";
 import LinkToken from "../models/LinkToken.js";
 
 const connection = new IORedis({
-  host: "127.0.0.1",
-  port: 6379,
+  host: process.env.REDIS_HOST || "127.0.0.1",
+  port: parseInt(process.env.REDIS_PORT || "6379", 10),
+  db: parseInt(process.env.REDIS_DB || "0", 10),
+  password: process.env.REDIS_PASSWORD || undefined,
 });
 
 // same bot function copy kar ya import kar

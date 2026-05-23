@@ -1,10 +1,18 @@
+import dotenv from "dotenv";
 import mongoose from "mongoose";
 import Redis from "ioredis";
 import LinkToken from "./models/LinkToken.js";
 
-const redis = new Redis("redis://127.0.0.1:6379");
+dotenv.config();
 
-await mongoose.connect("mongodb://127.0.0.1:27017/email_core");
+const redis = new Redis({
+  host: process.env.REDIS_HOST || "127.0.0.1",
+  port: parseInt(process.env.REDIS_PORT || "6379", 10),
+  db: parseInt(process.env.REDIS_DB || "0", 10),
+  password: process.env.REDIS_PASSWORD || undefined,
+});
+
+await mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/email_core");
 
 console.log("🚀 Worker started");
 
