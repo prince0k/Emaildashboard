@@ -16,7 +16,7 @@ export function useCampaignWizard(campaignId: string | null) {
   const [isManualRuntimeId, setIsManualRuntimeId] = useState(false);
 
   const [localCampaignId, setLocalCampaignId] = useState<string | null>(campaignId);
-  const loadedCampaignIdRef = useRef<string | null>(campaignId);
+  const loadedCampaignIdRef = useRef<string | null>(null);
   const rawRoutesRef = useRef<any[]>([]);
 
   const requestInFlightRef = useRef(false);
