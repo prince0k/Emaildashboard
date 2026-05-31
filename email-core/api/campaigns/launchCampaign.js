@@ -36,6 +36,7 @@ export default async function launchCampaign(req, res) {
       offerId,
       isp,
       segmentName,
+      routes,
       routeIds,
       subjectIds,
       fromIds,
@@ -74,8 +75,8 @@ export default async function launchCampaign(req, res) {
       return res.status(404).json({ error: "offer_not_active" });
     }
 
-    let resolvedRoutes = [];
-    if (routeIds && Array.isArray(routeIds) && senderDoc) {
+    let resolvedRoutes = routes || [];
+    if (routeIds && Array.isArray(routeIds) && senderDoc && routeIds.length > 0) {
       resolvedRoutes = senderDoc.routes
         .filter(r => routeIds.includes(String(r._id)))
         .map(r => ({

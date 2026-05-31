@@ -40,6 +40,7 @@ export function useCampaignWizard(campaignId: string | null) {
     isp: "Yahoo",
     segmentName: "",
     routeIds: [] as string[],
+    routes: [] as { vmta: string; domain: string; from_user: string }[],
     testEmails: [] as string[],
     subjectIds: [] as string[],
     fromIds: [] as string[],
@@ -61,6 +62,7 @@ export function useCampaignWizard(campaignId: string | null) {
   });
 
   const [servers, setServers] = useState<any[]>([]);
+  const currentServer = servers.find(s => s._id === form.sender);
   const [offers, setOffers] = useState<any[]>([]);
   const [segments, setSegments] = useState<any[]>([]);
   const [creatives, setCreatives] = useState<any[]>([]);
@@ -133,6 +135,7 @@ export function useCampaignWizard(campaignId: string | null) {
               isp: c.isp || "Yahoo",
               segmentName: c.segmentName || "",
               routeIds: [],
+              routes: c.routes || [],
               testEmails: c.testEmails || [],
               subjectIds: c.sendConfig?.subjectIds || [],
               fromIds: c.sendConfig?.fromIds || [],
@@ -193,6 +196,7 @@ export function useCampaignWizard(campaignId: string | null) {
             isp: c.isp || "Yahoo",
             segmentName: c.segmentName || "",
             routeIds: [],
+            routes: c.routes || [],
             testEmails: c.testEmails || [],
             subjectIds: c.sendConfig?.subjectIds || [],
             fromIds: c.sendConfig?.fromIds || [],
@@ -245,6 +249,7 @@ export function useCampaignWizard(campaignId: string | null) {
           isp: "Yahoo",
           segmentName: "",
           routeIds: [],
+          routes: [],
           testEmails: [],
           subjectIds: [],
           fromIds: [],
@@ -280,6 +285,7 @@ export function useCampaignWizard(campaignId: string | null) {
         const server = servers.find((s: any) => s._id === form.sender);
         if (server) {
           const resolvedIds: string[] = [];
+          const resolvedRoutes: any[] = [];
           if (Array.isArray(server.routes)) {
             for (const rawRoute of rawRoutesRef.current) {
               const matchedRoute = server.routes.find(
@@ -287,15 +293,25 @@ export function useCampaignWizard(campaignId: string | null) {
               );
               if (matchedRoute) {
                 resolvedIds.push(matchedRoute._id);
+                resolvedRoutes.push({
+                  vmta: rawRoute.vmta,
+                  domain: rawRoute.domain,
+                  from_user: rawRoute.from_user || matchedRoute.from_user
+                });
+              } else {
+                resolvedRoutes.push({
+                  vmta: rawRoute.vmta,
+                  domain: rawRoute.domain,
+                  from_user: rawRoute.from_user
+                });
               }
             }
           }
-          if (resolvedIds.length > 0) {
-            setForm(prev => ({
-              ...prev,
-              routeIds: resolvedIds
-            }));
-          }
+          setForm(prev => ({
+            ...prev,
+            routeIds: resolvedIds,
+            routes: resolvedRoutes
+          }));
           rawRoutesRef.current = [];
         }
       }
@@ -360,11 +376,89 @@ export function useCampaignWizard(campaignId: string | null) {
   }, [form.creativeId, creatives, htmlOverride]);
 
   const toggleSelection = (id: string, field: "routeIds" | "subjectIds" | "fromIds") => {
+    if (field === "routeIds") {
+      setForm(prev => {
+        const isSelected = prev.routeIds.includes(id);
+        const nextRouteIds = isSelected
+          ? prev.routeIds.filter(x => x !== id)
+          : [...prev.routeIds, id];
+        
+        let nextRoutes = [...(prev.routes || [])];
+        if (isSelected) {
+          const routeInfo = currentServer?.routes?.find((r: any) => r._id === id);
+          if (routeInfo) {
+            nextRoutes = nextRoutes.filter(r => !(r.vmta === routeInfo.vmta && r.domain === routeInfo.domain));
+          }
+        } else {
+          const routeInfo = currentServer?.routes?.find((r: any) => r._id === id);
+          if (routeInfo) {
+            const alreadyExists = nextRoutes.some(r => r.vmta === routeInfo.vmta && r.domain === routeInfo.domain);
+            if (!alreadyExists) {
+              nextRoutes.push({
+                vmta: routeInfo.vmta,
+                domain: routeInfo.domain,
+                from_user: routeInfo.from_user
+              });
+            }
+          }
+        }
+        
+        return {
+          ...prev,
+          routeIds: nextRouteIds,
+          routes: nextRoutes
+        };
+      });
+    } else {
+      setForm(prev => ({
+        ...prev,
+        [field]: prev[field].includes(id)
+          ? prev[field].filter(x => x !== id)
+          : [...prev[field], id]
+      }));
+    }
+  };
+
+  const updateRouteFromUser = (vmta: string, domain: string, newFromUser: string) => {
     setForm(prev => ({
       ...prev,
-      [field]: prev[field].includes(id)
-        ? prev[field].filter(x => x !== id)
-        : [...prev[field], id]
+      routes: (prev.routes || []).map(r =>
+        r.vmta === vmta && r.domain === domain
+          ? { ...r, from_user: newFromUser }
+          : r
+      )
+    }));
+  };
+
+  const handleTextareaRoutesChange = (text: string) => {
+    const lines = text.split("\n");
+    const parsedRoutes: { vmta: string, domain: string, from_user: string }[] = [];
+    for (const line of lines) {
+      const parts = line.trim().split("=>");
+      if (parts.length >= 3) {
+        const vmta = parts[0].trim();
+        const domain = parts[1].trim();
+        const from_user = parts[2].trim();
+        if (vmta && domain && from_user) {
+          parsedRoutes.push({ vmta, domain, from_user });
+        }
+      }
+    }
+    
+    const resolvedIds: string[] = [];
+    if (currentServer && Array.isArray(currentServer.routes)) {
+      for (const pr of parsedRoutes) {
+        const matched = currentServer.routes.find((r: any) => r.vmta === pr.vmta && r.domain === pr.domain);
+        if (matched) {
+          resolvedIds.push(matched._id);
+        }
+      }
+    }
+    
+    setForm(prev => ({
+      ...prev,
+      routes: parsedRoutes,
+      routeIds: resolvedIds
     }));
   };
 
@@ -550,7 +644,7 @@ export function useCampaignWizard(campaignId: string | null) {
     }
   };
 
-  const currentServer = servers.find(s => s._id === form.sender);
+  const currentServerDummy = null; // Removed duplicated currentServer definition from bottom
 
   return {
     step, setStep,
@@ -567,6 +661,7 @@ export function useCampaignWizard(campaignId: string | null) {
     loading, currentTestIndex, error,
     setIsManualName, setIsManualRuntimeId,
     toggleSelection, handleSaveDraft, handleTestFire, handleSubmit,
-    editorRef, gutterRef
+    editorRef, gutterRef,
+    updateRouteFromUser, handleTextareaRoutesChange
   };
 }

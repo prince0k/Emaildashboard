@@ -50,6 +50,7 @@ import leadStats from "./api/leads/stats.js";
 import sendWelcome from "./api/welcome/send.js";
 import sendVerify from "./api/welcome/sendVerify.js";
 import sendPersonalised from "./api/welcome/sendPersonalised.js";
+import sendGuide from "./api/welcome/sendGuide.js";
 import triggerRoutes from "./api/triggers/index.js";
 import permissionRequestRoutes from "./api/permission-requests/index.js";
 import pmtaStats from "./api/pmta/stats.js";
@@ -179,6 +180,7 @@ app.post("/api/campaigns/updateStatus", updateStatusPublic);
 app.post("/api/welcome/send", sendWelcome);
 app.post("/api/welcome/send-verify", sendVerify);
 app.post("/api/welcome/send-personalised", sendPersonalised);
+app.post("/api/welcome/send-guide", sendGuide);
 
 /* ======================
   AUTH REQUIRED ROUTES

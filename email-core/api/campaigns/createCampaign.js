@@ -96,7 +96,7 @@ export default async function createCampaign(req, res) {
 
     // Resolve routeIds if provided
     let resolvedRoutes = routes || [];
-    if (routeIds && Array.isArray(routeIds) && senderDoc) {
+    if (routeIds && Array.isArray(routeIds) && senderDoc && routeIds.length > 0) {
       resolvedRoutes = senderDoc.routes
         .filter(r => routeIds.includes(String(r._id)))
         .map(r => ({

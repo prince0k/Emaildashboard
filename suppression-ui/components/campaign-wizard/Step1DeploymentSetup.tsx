@@ -4,7 +4,8 @@ import { Input, Select } from "./shared/FormComponents";
 
 export default function Step1DeploymentSetup({ 
   step, setStep, isFullscreen, handleSaveDraft, 
-  form, setForm, servers, currentServer, offers, segments, setIsManualName, setIsManualRuntimeId, toggleSelection
+  form, setForm, servers, currentServer, offers, segments, setIsManualName, setIsManualRuntimeId, toggleSelection,
+  updateRouteFromUser, handleTextareaRoutesChange
 }: any) {
   if (step !== 1 || isFullscreen) return null;
 
@@ -28,11 +29,11 @@ export default function Step1DeploymentSetup({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
           <Select
             label="1. Sender Server"
             value={form.sender}
-            onChange={v => setForm({ ...form, sender: v })}
+            onChange={v => setForm({ ...form, sender: v, routeIds: [], routes: [] })}
             options={servers.map((s: any) => ({ value: s._id, label: s.name }))}
           />
           <Select
@@ -48,24 +49,71 @@ export default function Step1DeploymentSetup({
               { value: "other", label: "Other / Mixed" }
             ]}
           />
-          <div className="space-y-4">
-            <label className="text-[13px] font-bold text-muted-foreground uppercase tracking-[0.15em] ml-1">3. Multi-Route Selection ({form.routeIds.length})</label>
-            <div className="bg-background/40 border border-border/40 rounded-2xl p-4 h-[120px] overflow-y-auto space-y-2 scrollbar-hide">
-              {currentServer?.routes?.map((r: any) => (
-                <div
-                  key={r._id}
-                  onClick={() => toggleSelection(r._id, "routeIds")}
-                  className={`p-3 rounded-xl border cursor-pointer text-[15px] font-medium transition-all ${form.routeIds.includes(r._id)
-                    ? "bg-primary/10 border-primary text-primary"
-                    : "bg-secondary/10 border-border/20 hover:border-primary/40 text-muted-foreground"
+        </div>
+
+        {/* Routes Customization Card Section */}
+        {currentServer && (
+          <div className="border-t border-border/20 pt-8 mb-10 space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[15px] font-bold text-muted-foreground uppercase tracking-[0.15em]">Routes</h3>
+              <span className="text-[12px] text-muted-foreground/60 italic">Saved automatically</span>
+            </div>
+
+            {/* Serialized Textarea */}
+            <div className="space-y-2">
+              <textarea
+                value={(form.routes || []).map((r: any) => `${r.vmta}=>${r.domain}=>${r.from_user}`).join("\n")}
+                onChange={(e) => handleTextareaRoutesChange(e.target.value)}
+                placeholder="vmta=>domain=>from_user (one per line)"
+                className="w-full h-40 bg-black text-white font-mono p-4 rounded-2xl border border-border/30 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm resize-y"
+              />
+            </div>
+
+            {/* Routes Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {currentServer.routes?.map((r: any) => {
+                const isChecked = form.routeIds.includes(r._id);
+                const customRoute = form.routes?.find((cr: any) => cr.vmta === r.vmta && cr.domain === r.domain);
+                const displayFromUser = customRoute ? customRoute.from_user : r.from_user;
+
+                return (
+                  <div
+                    key={r._id}
+                    className={`p-5 rounded-2xl border transition-all ${
+                      isChecked
+                        ? "bg-primary/5 border-primary/40 shadow-sm"
+                        : "bg-secondary/5 border-border/10 opacity-70"
                     }`}
-                >
-                  {r.vmta} ({r.domain})
-                </div>
-              ))}
+                  >
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleSelection(r._id, "routeIds")}
+                        className="w-4 h-4 rounded border-border/40 text-primary focus:ring-primary cursor-pointer"
+                      />
+                      <span className="text-sm font-semibold text-foreground/90">
+                        {r.vmta} | {r.domain}
+                      </span>
+                    </label>
+
+                    {isChecked && (
+                      <div className="mt-3">
+                        <input
+                          type="text"
+                          value={displayFromUser}
+                          onChange={(e) => updateRouteFromUser(r.vmta, r.domain, e.target.value)}
+                          className="w-full bg-black text-white font-mono rounded-xl px-4 py-2 text-sm border border-border/40 focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                          placeholder="from_user"
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
-        </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-border/20 pt-8">
           <Select

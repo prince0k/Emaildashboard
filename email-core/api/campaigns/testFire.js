@@ -10,6 +10,7 @@ export default async function testFireCampaign(req, res) {
   try {
     const {
       senderId,
+      routes,
       routeIds,
       offerId,
       creativeId,
@@ -92,7 +93,11 @@ export default async function testFireCampaign(req, res) {
     let vmta = sender.routes[0].vmta;
     let fromEmail = `${sender.routes[0].from_user || "mailer"}@${sender.routes[0].domain}`;
 
-    if (routeIds && routeIds.length > 0) {
+    if (routes && Array.isArray(routes) && routes.length > 0) {
+      const selectedRoute = routes[0];
+      vmta = selectedRoute.vmta;
+      fromEmail = `${selectedRoute.from_user || "mailer"}@${selectedRoute.domain}`;
+    } else if (routeIds && routeIds.length > 0) {
       const selectedRoute = sender.routes.find(r => String(r._id) === String(routeIds[0]));
       if (selectedRoute) {
         vmta = selectedRoute.vmta;
