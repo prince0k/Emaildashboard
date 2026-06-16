@@ -51,6 +51,7 @@ import sendWelcome from "./api/welcome/send.js";
 import sendVerify from "./api/welcome/sendVerify.js";
 import sendPersonalised from "./api/welcome/sendPersonalised.js";
 import sendGuide from "./api/welcome/sendGuide.js";
+import sendCustom from "./api/welcome/sendCustom.js";
 import triggerRoutes from "./api/triggers/index.js";
 import permissionRequestRoutes from "./api/permission-requests/index.js";
 import pmtaStats from "./api/pmta/stats.js";
@@ -181,6 +182,7 @@ app.post("/api/welcome/send", sendWelcome);
 app.post("/api/welcome/send-verify", sendVerify);
 app.post("/api/welcome/send-personalised", sendPersonalised);
 app.post("/api/welcome/send-guide", sendGuide);
+app.post("/api/welcome/send-custom", sendCustom);
 
 /* ======================
   AUTH REQUIRED ROUTES
