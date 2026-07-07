@@ -234,132 +234,150 @@ export default function ServerDetail() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-medium flex items-center gap-2">
               <Activity className="h-4 w-4" />
-              Server Controls
+              PMTA Command Center
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2 mr-4">
-                <input
-                  type="checkbox"
-                  id="runAll"
-                  checked={runAll}
-                  onChange={(e) => setRunAll(e.target.checked)}
-                  className="rounded border-border"
-                />
-                <label htmlFor="runAll" className="text-sm">
-                  Run on all servers
-                </label>
+          <CardContent className="space-y-6">
+            {/* Global Options */}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground border-b pb-3">
+              <input
+                type="checkbox"
+                id="runAll"
+                checked={runAll}
+                onChange={(e) => setRunAll(e.target.checked)}
+                className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+              />
+              <label htmlFor="runAll" className="font-medium cursor-pointer select-none">
+                Execute command on all configured PMTA servers
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Section A: General Commands */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  General Commands (Daemon Level)
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => runCommand("reload")}
+                        disabled={!!pendingAction}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
+                      >
+                        <RotateCw className="h-3.5 w-3.5" />
+                        Reload Configuration
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Reload PMTA configuration files</TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() =>
+                          confirmAction(
+                            "Restart PMTA Service",
+                            "Are you sure you want to restart the PMTA daemon service? This will temporarily interrupt mail queue sending.",
+                            () => runCommand("restart")
+                          )
+                        }
+                        disabled={!!pendingAction}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-md bg-rose text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
+                      >
+                        <Power className="h-3.5 w-3.5" />
+                        Restart Daemon
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Restart local PMTA service</TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => runCommand("reset_counters")}
+                        disabled={!!pendingAction}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-md bg-amber text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Reset Counters
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Reset PMTA traffic counters</TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => runCommand("status")}
+                        disabled={!!pendingAction}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-md bg-panel border border-border text-text-secondary hover:bg-hover disabled:opacity-50 transition-colors"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        Show Status
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Check running PMTA service status</TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => runCommand("reload")}
-                    disabled={!!pendingAction}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
-                  >
-                    <RotateCw className="h-3.5 w-3.5" />
-                    Reload
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Reload PMTA configuration</TooltipContent>
-              </Tooltip>
+              {/* Section B: Server-Based Commands */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Server-Based Commands (Queue & Route Controls)
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => runCommand("pause_queue", "*/*")}
+                        disabled={!!pendingAction}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-md bg-amber/80 text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
+                      >
+                        <Pause className="h-3.5 w-3.5" />
+                        Pause All Queues (*/*)
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Pause delivery to all domains/IPs</TooltipContent>
+                  </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() =>
-                      confirmAction(
-                        "Restart Server",
-                        "Are you sure you want to restart the PMTA service? This may temporarily interrupt mail flow.",
-                        () => runCommand("restart")
-                      )
-                    }
-                    disabled={!!pendingAction}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-rose text-primary-foreground hover:opacity-90 disabled:opacity-50"
-                  >
-                    <Power className="h-3.5 w-3.5" />
-                    Restart
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Restart PMTA service</TooltipContent>
-              </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => runCommand("resume_queue", "*/*")}
+                        disabled={!!pendingAction}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-md bg-emerald text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
+                      >
+                        <Play className="h-3.5 w-3.5" />
+                        Resume All Queues (*/*)
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Resume delivery to all domains/IPs</TooltipContent>
+                  </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => runCommand("reset_counters")}
-                    disabled={!!pendingAction}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-amber text-primary-foreground hover:opacity-90 disabled:opacity-50"
-                  >
-                    Reset Counters
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Reset traffic counters</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => runCommand("status")}
-                    disabled={!!pendingAction}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-panel border border-border text-text-secondary hover:bg-hover disabled:opacity-50"
-                  >
-                    <Eye className="h-3.5 w-3.5" />
-                    Status
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Check PMTA status</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => runCommand("pause_queue", "*/*")}
-                    disabled={!!pendingAction}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-amber/80 text-primary-foreground hover:opacity-90 disabled:opacity-50"
-                  >
-                    <Pause className="h-3.5 w-3.5" />
-                    Pause All
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Pause all queues</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => runCommand("resume_queue", "*/*")}
-                    disabled={!!pendingAction}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-emerald text-primary-foreground hover:opacity-90 disabled:opacity-50"
-                  >
-                    <Play className="h-3.5 w-3.5" />
-                    Resume All
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Resume all queues</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() =>
-                      confirmAction(
-                        "Delete All Queues",
-                        "This will delete ALL queues. This action cannot be undone. Are you absolutely sure?",
-                        () => runCommand("delete_queue", "*/*")
-                      )
-                    }
-                    disabled={!!pendingAction}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-rose/90 text-primary-foreground hover:opacity-90 disabled:opacity-50"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Delete All
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Delete all queues (dangerous)</TooltipContent>
-              </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() =>
+                          confirmAction(
+                            "Delete All Queues",
+                            "This will discard all emails in all queues. This action is destructive and cannot be undone.",
+                            () => runCommand("delete_queue", "*/*")
+                          )
+                        }
+                        disabled={!!pendingAction}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-md bg-rose/90 text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Purge All Queues (*/*)
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Delete all emails in all queues (dangerous)</TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
