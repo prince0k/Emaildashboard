@@ -27,20 +27,21 @@ export async function runCommand({ action, target, source_ip, serverId }) {
 
   for (const server of servers) {
     try {
-
-      /* 🔥 SAME LOGIC AS STATS */
-      const url = buildServerUrl(server.baseUrl, "run_command.php");
+      // Parse remote domain/IP from server baseUrl and route to secure agent port (default 8443)
+      const u = new URL(server.baseUrl);
+      const agentPort = process.env.AGENT_PORT || "8443";
+      const url = `${u.protocol}//${u.hostname}:${agentPort}/run`;
 
       const res = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Internal-Key": process.env.SENDER_INTERNAL_KEY
+          "X-Agent-Token": process.env.SENDER_INTERNAL_KEY
         },
         body: JSON.stringify({
           action,
           target,
-          source_ip
+          ip: source_ip
         })
       });
 

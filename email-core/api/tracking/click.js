@@ -4,6 +4,7 @@ import LinkToken from "../../models/LinkToken.js";
 import Deploy from "../../models/Deploy.js";
 import ClickLog from "../../models/ClickLog.js";
 import normalizeEmail from "../../utils/normalizeEmail.js";
+import { isClickHouseEnabled, insertLog } from "../../config/clickhouse.js";
 import { getClientMeta, getPacificDayString, decryptToken, isOldToken } from "./helpers.js";
 /* =========================
    HELPERS
@@ -178,38 +179,60 @@ res.end();
         const now = new Date();
         const day = getPacificDayString(now);
 
-        const promises = [
-  ClickLog.updateOne(
-    {
-      offer_id: link.offer_id,
-      rl: link.rl,
-      day,
-      ...(email ? { email } : {}),
-    },
-    {
-      $setOnInsert: {
-        offer_id: link.offer_id,
-        campaignId: deploy?.campaignId || null,
-        offerId: deploy?.offerId || null,
-        email,
-        send_domain: link.send_domain || null,
-        vmta: link.vmta || null,
-        list_id: link.list_id || null,
-        rl: link.rl,
-        url: redirectUrl,
-        ip,
-        userAgent,
-        country,
-        day,
-        is_bot_click: bot,
-      },
-      $inc: {
-        click_count: 1,
-      },
-    },
-    { upsert: true }
-  ),
-];
+        const promises = [];
+
+        if (isClickHouseEnabled) {
+          promises.push(
+            insertLog("clicks", {
+              offer_id: link.offer_id,
+              campaignId: deploy?.campaignId ? String(deploy.campaignId) : null,
+              offerId: deploy?.offerId ? String(deploy.offerId) : null,
+              email: email || null,
+              send_domain: link.send_domain || null,
+              vmta: link.vmta || null,
+              list_id: link.list_id ? String(link.list_id) : null,
+              rl: isNaN(link.rl) ? 0 : Number(link.rl),
+              url: redirectUrl,
+              ip: ip || null,
+              userAgent: userAgent || null,
+              country: country || null,
+              bot: bot ? 1 : 0,
+            })
+          );
+        } else {
+          promises.push(
+            ClickLog.updateOne(
+              {
+                offer_id: link.offer_id,
+                rl: link.rl,
+                day,
+                ...(email ? { email } : {}),
+              },
+              {
+                $setOnInsert: {
+                  offer_id: link.offer_id,
+                  campaignId: deploy?.campaignId || null,
+                  offerId: deploy?.offerId || null,
+                  email,
+                  send_domain: link.send_domain || null,
+                  vmta: link.vmta || null,
+                  list_id: link.list_id || null,
+                  rl: link.rl,
+                  url: redirectUrl,
+                  ip,
+                  userAgent,
+                  country,
+                  day,
+                  is_bot_click: bot,
+                },
+                $inc: {
+                  click_count: 1,
+                },
+              },
+              { upsert: true }
+            )
+          );
+        }
 
 if (!isNew) {
   promises.push(

@@ -7,6 +7,7 @@ import SubjectLine from "../models/SubjectLine.js";
 import FromLine from "../models/FromLine.js";
 import Creative from "../models/Creative.js";
 import SenderServer from "../models/SenderServer.js";
+import { checkBloom } from "../lib/redisBloom.js";
 
 const DATA_ROOT = process.env.DATA_ROOT || "D:/recipe/Emaildashboard/email-core-data";
 
@@ -161,6 +162,9 @@ export async function startCampaignWorker(campaignId) {
 
     const senderUrl = sender.baseUrl.replace(/\/$/, "") + "/sendWelcomeEmail.php";
     const internalKey = process.env.SENDER_INTERNAL_KEY;
+    if (!internalKey) {
+      throw new Error("CRITICAL: SENDER_INTERNAL_KEY env variable is required to authenticate with remote senders");
+    }
 
     let chunk = [];
     let lastDbUpdate = Date.now();
@@ -280,7 +284,19 @@ export async function startCampaignWorker(campaignId) {
         reloadSets();
       }
 
-      if (complaintSet.has(email) || unsubSet.has(email)) {
+      // Check local pre-loaded sets first (for performance)
+      let isSuppressed = complaintSet.has(email) || unsubSet.has(email);
+
+      // If not suppressed locally, perform real-time check against Redis Bloom filter
+      if (!isSuppressed) {
+        const inRedisUnsub = !skipUnsub && (await checkBloom("unsub_bloom", email));
+        const inRedisComplaint = await checkBloom("complaint_bloom", email);
+        if (inRedisUnsub || inRedisComplaint) {
+          isSuppressed = true;
+        }
+      }
+
+      if (isSuppressed) {
         realtimeSuppressed++;
         continue;
       }

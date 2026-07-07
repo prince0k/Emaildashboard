@@ -22,8 +22,14 @@ export function decryptToken(token) {
   try {
     if (!token) return null;
 
+    const keyStr = process.env.TRACKING_AES_KEY;
+    if (!keyStr) {
+      if (process.env.NODE_ENV === "production") {
+        throw new Error("CRITICAL: TRACKING_AES_KEY env variable is required in production");
+      }
+    }
     const key = Buffer.from(
-      "9f3a8c7d6e5b4a3c2d1e0f9a8b7c6d5e",
+      keyStr || "9f3a8c7d6e5b4a3c2d1e0f9a8b7c6d5e",
       "utf-8"
     );
 

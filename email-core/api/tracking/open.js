@@ -1,6 +1,7 @@
 import LinkToken from "../../models/LinkToken.js";
 import OpenLog from "../../models/OpenLog.js";
 import normalizeEmail from "../../utils/normalizeEmail.js";
+import { isClickHouseEnabled, insertLog } from "../../config/clickhouse.js";
 import {
   getClientMeta,
   decryptToken,
@@ -87,37 +88,58 @@ export default async function trackOpen(req, res) {
 
     setImmediate(async () => {
       try {
-        const promises = [
-          OpenLog.updateOne(
-            match,
-            {
-              $setOnInsert: {
-                offer_id: link.offer_id,
-                campaignId: link.campaignId || null,
-                offerId: link.offerId || null,
-                email,
+        const promises = [];
 
-                send_domain: link.send_domain || null,
-                vmta: link.vmta || null,
-                list_id: link.list_id || null,
+        if (isClickHouseEnabled) {
+          promises.push(
+            insertLog("opens", {
+              offer_id: link.offer_id,
+              campaignId: link.campaignId ? String(link.campaignId) : null,
+              offerId: link.offerId ? String(link.offerId) : null,
+              email: email || null,
+              send_domain: link.send_domain || null,
+              vmta: link.vmta || null,
+              list_id: link.list_id ? String(link.list_id) : null,
+              day,
+              ip: ip || null,
+              userAgent: userAgent || null,
+              country: country || null,
+              bot: bot ? 1 : 0,
+            })
+          );
+        } else {
+          promises.push(
+            OpenLog.updateOne(
+              match,
+              {
+                $setOnInsert: {
+                  offer_id: link.offer_id,
+                  campaignId: link.campaignId || null,
+                  offerId: link.offerId || null,
+                  email,
 
-                day,
+                  send_domain: link.send_domain || null,
+                  vmta: link.vmta || null,
+                  list_id: link.list_id || null,
 
-                ip,
-                userAgent,
-                country,
+                  day,
 
-                unique_open_count: 1, // 🔥 always 1 per user/day
+                  ip,
+                  userAgent,
+                  country,
+
+                  unique_open_count: 1, // 🔥 always 1 per user/day
+                },
+
+                $inc: {
+                  total_open_count: 1,
+                  bot_open_count: bot ? 1 : 0,
+                },
               },
-
-              $inc: {
-                total_open_count: 1,
-                bot_open_count: bot ? 1 : 0,
-              },
-            },
-            { upsert: true }
-          ),
-        ];
+              { upsert: true }
+            )
+          );
+        }
 
         // 🟢 OLD TOKEN SUMMARY UPDATE
         if (!isNew) {

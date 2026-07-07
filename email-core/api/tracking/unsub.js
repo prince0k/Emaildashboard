@@ -5,6 +5,7 @@ import SenderUnsub from "../../models/SenderUnsub.js";
 import UnsubLog from "../../models/UnsubLog.js";
 import normalizeEmail from "../../utils/normalizeEmail.js";
 import { PATHS } from "../../config/paths.js";
+import { addToBloom } from "../../lib/redisBloom.js";
 import {
   getClientMeta,
   getPacificDayString,
@@ -134,13 +135,17 @@ export default async function trackUnsub(req, res) {
 
         await Promise.allSettled(promises);
 
-        /* 4️⃣ FILE WRITE (NON-BLOCKING) */
+        /* 4️⃣ FILE WRITE & REAL-TIME BLOOM CACHE (NON-BLOCKING) */
         try {
           const file = path.join(PATHS.unsub, "sender.txt");
           await fs.mkdir(PATHS.unsub, { recursive: true });
-          await fs.appendFile(file, email + "\n", "utf8");
+          
+          await Promise.all([
+            fs.appendFile(file, email + "\n", "utf8"),
+            addToBloom("unsub_bloom", email)
+          ]);
         } catch (e) {
-          console.error("FILE WRITE ERROR:", e);
+          console.error("FILE/BLOOM WRITE ERROR:", e);
         }
 
       } catch (err) {

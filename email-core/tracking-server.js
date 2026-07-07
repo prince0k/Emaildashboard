@@ -3,6 +3,7 @@ import express from "express";
 import mongoose from "mongoose";
 import helmet from "helmet";
 import compression from "compression";
+import "./config/clickhouse.js";
 
 /* ROUTES */
 import trackClick from "./api/tracking/click.js";
