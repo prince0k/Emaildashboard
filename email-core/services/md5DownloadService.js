@@ -48,61 +48,65 @@ export async function processOffer(offerId) {
   /* ---------- SNAPSHOT BEFORE ---------- */
   const beforeFiles = new Set(await fs.readdir(BASE_DIR));
 
-  /* ---------- DOWNLOAD ZIP ---------- */
-  const tempZip = path.join(BASE_DIR, `tmp_${offer._id}.zip`);
-  console.log("⬇️ DOWNLOADING ZIP:", tempZip);
-
-  await downloadFile(downloadUrl, tempZip);
-
-  /* ---------- UNZIP ---------- */
-  console.log("📦 UNZIPPING");
-  await unzip(tempZip, BASE_DIR);
-
-  /* ---------- SNAPSHOT AFTER ---------- */
-  const afterFiles = await fs.readdir(BASE_DIR);
-
-  // only files created by THIS unzip
-  const newFiles = afterFiles.filter(f => !beforeFiles.has(f));
-
-  /* ---------- FIND SUPPRESSION FILE ---------- */
-  const suppressionFile = newFiles.find(
-    f =>
-      f.startsWith("suppression_list--") &&
-      f.endsWith(".txt")
-  );
-
-  if (!suppressionFile) {
-    throw new Error(
-      "suppression_list file not found in extracted ZIP"
-    );
-  }
-
-  /* ---------- RENAME (OVERWRITE SAFE) ---------- */
   const finalPath = path.join(BASE_DIR, offer.md5FileName);
 
+  /* ---------- DOWNLOAD ZIP ---------- */
+  const tempZip = path.join(BASE_DIR, `tmp_${offer._id}_${Date.now()}.zip`);
+  console.log("⬇️ DOWNLOADING ZIP:", tempZip);
+
   try {
-    await fs.unlink(finalPath);
-  } catch (_) {}
+    await downloadFile(downloadUrl, tempZip);
 
-  console.log("✏️ RENAMING:", suppressionFile, "→", offer.md5FileName);
+    /* ---------- UNZIP ---------- */
+    console.log("📦 UNZIPPING:", tempZip);
+    await unzip(tempZip, BASE_DIR);
 
-  await fs.rename(
-    path.join(BASE_DIR, suppressionFile),
-    finalPath
-  );
+    /* ---------- SNAPSHOT AFTER ---------- */
+    const afterFiles = await fs.readdir(BASE_DIR);
 
-  /* ---------- CLEAN ONLY DOMAIN FILE FROM THIS ZIP ---------- */
-  for (const f of newFiles) {
-    if (
-      f.startsWith("domains_list--") &&
-      f.endsWith(".txt")
-    ) {
-      await fs.unlink(path.join(BASE_DIR, f));
+    // only files created by THIS unzip
+    const newFiles = afterFiles.filter(f => !beforeFiles.has(f));
+
+    /* ---------- FIND SUPPRESSION FILE ---------- */
+    const suppressionFile = newFiles.find(
+      f =>
+        f.startsWith("suppression_list--") &&
+        f.endsWith(".txt")
+    );
+
+    if (!suppressionFile) {
+      throw new Error(
+        "suppression_list file not found in extracted ZIP"
+      );
     }
-  }
 
-  /* ---------- DELETE TEMP ZIP ---------- */
-  await fs.unlink(tempZip);
+    /* ---------- RENAME (OVERWRITE SAFE) ---------- */
+    try {
+      await fs.unlink(finalPath);
+    } catch (_) {}
+
+    console.log("✏️ RENAMING:", suppressionFile, "→", offer.md5FileName);
+
+    await fs.rename(
+      path.join(BASE_DIR, suppressionFile),
+      finalPath
+    );
+
+    /* ---------- CLEAN ONLY DOMAIN FILE FROM THIS ZIP ---------- */
+    for (const f of newFiles) {
+      if (
+        f.startsWith("domains_list--") &&
+        f.endsWith(".txt")
+      ) {
+        await fs.unlink(path.join(BASE_DIR, f));
+      }
+    }
+  } finally {
+    /* ---------- DELETE TEMP ZIP ---------- */
+    try {
+      await fs.unlink(tempZip);
+    } catch (_) {}
+  }
 
   console.log("✅ MD5 READY:", finalPath);
 

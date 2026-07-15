@@ -20,7 +20,14 @@ export default async function downloadFile(url, dest) {
     });
 
     await new Promise((resolve, reject) => {
-      response.data.pipe(writer);
+      response.data.on("error", (err) => {
+        writer.destroy();
+        reject(err);
+      });
+
+      writer.on("error", (err) => {
+        reject(err);
+      });
 
       writer.on("finish", () => {
         if (!isNaN(contentLength) && bytesDownloaded < contentLength) {
@@ -29,7 +36,8 @@ export default async function downloadFile(url, dest) {
           resolve();
         }
       });
-      writer.on("error", reject);
+
+      response.data.pipe(writer);
     });
 
     return true;
