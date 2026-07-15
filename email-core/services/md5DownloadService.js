@@ -13,14 +13,11 @@ export async function processOffer(offerId) {
 
   const offer = await Offer.findById(offerId);
   if (!offer) {
-    return { status: "error", message: "Offer not found" };
+    throw new Error("Offer not found in database");
   }
 
   if (!offer.optizmoAccessKey) {
-    return {
-      status: "error",
-      message: "Optizmo access key missing for offer",
-    };
+    throw new Error("Optizmo access key missing for this offer");
   }
 
   /* ---------- CALL OPTIZMO ---------- */
@@ -32,15 +29,12 @@ export async function processOffer(offerId) {
         token: OPTIZMO_TOKEN,
         format: "md5",
       },
-      timeout: 300000,
+      timeout: 1800000, // 30 minutes (handles slow network routing)
     }
   );
 
   if (optizmoRes.data?.result !== "success") {
-    return {
-      status: "error",
-      message: "Optizmo returned error",
-    };
+    throw new Error(optizmoRes.data?.error || "Optizmo returned failure response");
   }
 
   const downloadUrl = optizmoRes.data.download_link;

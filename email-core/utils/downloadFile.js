@@ -9,13 +9,26 @@ export default async function downloadFile(url, dest) {
       method: "get",
       url,
       responseType: "stream",
-      timeout: 300000, // 5 min
+      timeout: 1800000, // 30 minutes (handles large files / slow speeds)
+    });
+
+    const contentLength = parseInt(response.headers["content-length"], 10);
+    let bytesDownloaded = 0;
+
+    response.data.on("data", (chunk) => {
+      bytesDownloaded += chunk.length;
     });
 
     await new Promise((resolve, reject) => {
       response.data.pipe(writer);
 
-      writer.on("finish", resolve);
+      writer.on("finish", () => {
+        if (!isNaN(contentLength) && bytesDownloaded < contentLength) {
+          reject(new Error(`Download truncated: received ${bytesDownloaded} of ${contentLength} bytes`));
+        } else {
+          resolve();
+        }
+      });
       writer.on("error", reject);
     });
 
